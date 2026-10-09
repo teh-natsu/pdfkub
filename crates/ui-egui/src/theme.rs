@@ -211,7 +211,16 @@ pub fn font_definitions_for(prefer_hans: bool) -> FontDefinitions {
             }
         }
     }
+    // Sarabun, the face Thai added text and typed comments are embedded with, for previews while
+    // typing them.
+    add(&mut fonts, "Sarabun", pdfcraft_fonts::SARABUN_REGULAR);
+    add(&mut fonts, "Sarabun-Bold", pdfcraft_fonts::SARABUN_BOLD);
     let fallback: Vec<String> = fonts.families[&FontFamily::Proportional].clone();
+    for (fam, primary) in [("sarabun", "Sarabun"), ("sarabun-bold", "Sarabun-Bold")] {
+        let mut stack = vec![primary.to_owned()];
+        stack.extend(fallback.iter().cloned());
+        fonts.families.insert(FontFamily::Name(fam.into()), stack);
+    }
     for (fam, primary, thai) in [("medium", "Inter-Medium", "Anuphan-Medium"), ("semibold", "Inter-SemiBold", "Anuphan-SemiBold")] {
         let mut stack = vec![primary.to_owned(), thai.to_owned()];
         stack.extend(fallback.iter().cloned());
@@ -228,6 +237,10 @@ pub fn medium(size: f32) -> FontId {
 }
 pub fn semibold(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name("semibold".into()))
+}
+/// Sarabun, for previewing text that will be embedded in Sarabun.
+pub fn sarabun(size: f32, bold: bool) -> FontId {
+    FontId::new(size, FontFamily::Name(if bold { "sarabun-bold" } else { "sarabun" }.into()))
 }
 
 pub fn apply(ctx: &egui::Context, kind: ThemeKind) {

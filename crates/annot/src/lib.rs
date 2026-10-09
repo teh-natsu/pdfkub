@@ -1083,7 +1083,7 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
 pub fn set_appearance(doc: &mut Document, r: ObjRef) -> Result<(), AnnotError> {
     let d = annot_dict(doc, r);
     let subtype = String::from_utf8_lossy(d.name(b"Subtype").unwrap_or_default()).into_owned();
-    let Some(stream) = appearance::build(&d) else { return Err(AnnotError::Unsupported(subtype)) };
+    let Some(stream) = appearance::build_embedded(doc, &d).or_else(|| appearance::build(&d)) else { return Err(AnnotError::Unsupported(subtype)) };
     let ap = doc.add(Object::Stream(stream));
     let mut apd = Dict::new();
     apd.set(b"N".to_vec(), Object::Ref(ap));

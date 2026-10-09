@@ -16,7 +16,7 @@ pub use craft::{
 };
 pub use embed::{
     ANUPHAN_MEDIUM, ANUPHAN_REGULAR, ANUPHAN_SEMIBOLD, EmbedError, EmbedFace, MAX_FONT_BYTES, PlacedGlyph, SARABUN_BOLD, SARABUN_BOLD_ITALIC,
-    SARABUN_ITALIC, SARABUN_REGULAR, Shaped, embeddable,
+    SARABUN_ITALIC, SARABUN_REGULAR, Shaped, embeddable, embedded_font, is_mark, wrap_with,
 };
 pub use script::{GlyphError, GlyphOutline, MAX_SIGNATURE_CHARS, ScriptOutline, japanese_glyph, japanese_glyph_from, script_outline};
 

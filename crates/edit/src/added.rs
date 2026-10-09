@@ -228,42 +228,7 @@ fn norm(r: [f64; 4]) -> [f64; 4] {
 pub fn lines(t: &AddedText) -> Vec<String> {
     let width = (t.rect[2] - t.rect[0]).max(t.size);
     let face = t.face();
-    let fits = |s: &str| t.width_of(face.as_ref(), s) <= width;
-    let mut out = Vec::new();
-    for para in t.text.split('\n') {
-        let mut line = String::new();
-        for word in para.split(' ') {
-            let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
-            if fits(&candidate) {
-                line = candidate;
-                continue;
-            }
-            if !line.is_empty() {
-                out.push(std::mem::take(&mut line));
-            }
-            // A word wider than the box (Thai is written without spaces between words) breaks
-            // between characters, never before a combining mark.
-            let mut piece = String::new();
-            for c in word.chars() {
-                let mut next = piece.clone();
-                next.push(c);
-                if !piece.is_empty() && !is_mark(c) && !fits(&next) {
-                    out.push(std::mem::take(&mut piece));
-                    next = c.to_string();
-                }
-                piece = next;
-            }
-            line = piece;
-        }
-        out.push(line);
-    }
-    out
-}
-
-/// Characters that attach to the one before: combining marks (Thai vowels above and below, tone
-/// marks, Latin diacritics).
-fn is_mark(c: char) -> bool {
-    matches!(c, '\u{0300}'..='\u{036F}' | '\u{0E31}' | '\u{0E34}'..='\u{0E3A}' | '\u{0E47}'..='\u{0E4E}' | '\u{0EB1}' | '\u{0EB4}'..='\u{0EBC}' | '\u{0EC8}'..='\u{0ECD}')
+    pdfcraft_fonts::wrap_with(&t.text, |s| t.width_of(face.as_ref(), s) <= width)
 }
 
 /// The box a text item occupies (height from its lines).
@@ -544,7 +509,7 @@ fn write(doc: &mut Document, page: usize, c: &Content, obj: Option<ObjRef>) -> R
             Some(face) => {
                 let font = match shared_font(doc, &face) {
                     Some(r) => r,
-                    None => face.write(doc).map_err(|e| EditError::Invalid(e.to_string()))?,
+                    None => pdfcraft_fonts::embedded_font(doc, &face).map_err(|e| EditError::Invalid(e.to_string()))?,
                 };
                 let mut codes = Vec::new();
                 for line in lines(t) {

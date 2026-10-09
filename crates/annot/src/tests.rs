@@ -402,6 +402,30 @@ fn wrapping_and_widths() {
     assert_eq!(n(2.50), "2.5");
 }
 
+/// Typed Thai (Fill & Sign ▸ Add text, text boxes) is drawn with embedded Sarabun, not WinAnsi
+/// question marks, and two comments share one embedded font.
+#[test]
+fn thai_typed_text_embeds_sarabun() {
+    let mut doc = fixture();
+    let add = |doc: &mut Document, contents: &str| {
+        let shape = Shape::Typewriter { rect: [100.0, 680.0, 260.0, 716.0], font_size: 11.0 };
+        let style = Style::default_for(&shape);
+        add_annotation(doc, &NewAnnotation { page: 1, shape, style, contents: contents.into(), author: "Ada".into() }, &meta("x")).unwrap()
+    };
+    let a = add(&mut doc, "ทดสอบ ภาษาไทย");
+    let b = add(&mut doc, "ที่นี่");
+    let doc = reopen(&doc);
+    let all = list(&doc, 1);
+    let ap = ap_content(&doc, &all[a]);
+    assert!(!ap.contains("(?") && ap.contains("/PCE") && ap.contains("/ActualText <FEFF0E170E140E2A0E2D0E1A"), "{ap}");
+    let font = |i: usize| ap_content(&doc, &all[i]).split("/PCE").nth(1).and_then(|s| s.split(' ').next()).map(str::to_owned);
+    assert_eq!(font(a), font(b), "one embedded font for both");
+    // Latin-only text keeps the standard font.
+    let mut doc = fixture();
+    let c = add(&mut doc, "Ada Lovelace");
+    assert!(ap_content(&doc, &list(&doc, 1)[c]).contains("(Ada Lovelace) Tj"));
+}
+
 #[test]
 fn fill_and_sign_items_are_drawn() {
     let mut doc = fixture();

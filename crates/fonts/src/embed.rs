@@ -349,6 +349,71 @@ impl EmbedFace {
     }
 }
 
+/// The Type0 font for `face` in `doc`: the one already embedded for it (listed in the catalog's
+/// `/PCFonts`), else a new one, which is listed there. Every item and comment drawn with the face
+/// shares it.
+pub fn embedded_font(doc: &mut Document, face: &EmbedFace) -> Result<ObjRef, EmbedError> {
+    let root = doc.root().ok_or(EmbedError::Unreadable)?;
+    let catalog = doc.get(root).as_dict().cloned().ok_or(EmbedError::Unreadable)?;
+    let mut listed: Vec<Object> = catalog.get(b"PCFonts").map(|l| doc.resolve(l)).and_then(|l| l.as_array().cloned()).unwrap_or_default();
+    for pair in listed.chunks(2) {
+        let (Some(name), Some(r)) =
+            (pair.first().and_then(|n| doc.resolve(n).as_string().map(|s| s.to_text())), pair.get(1).and_then(Object::as_ref))
+        else {
+            continue;
+        };
+        if name == face.name && EmbedFace::read(doc, r, &name).is_some_and(|f| f.data == face.data) {
+            return Ok(r);
+        }
+    }
+    let r = face.write(doc)?;
+    listed.push(Object::String(PdfString::text(&face.name)));
+    listed.push(Object::Ref(r));
+    let mut catalog = catalog;
+    catalog.set(b"PCFonts".to_vec(), Object::Array(listed));
+    doc.set(root, Object::Dict(catalog));
+    Ok(r)
+}
+
+/// Characters that attach to the one before: combining marks (Thai vowels above and below, tone
+/// marks, Lao, Latin diacritics).
+pub fn is_mark(c: char) -> bool {
+    matches!(c, '\u{0300}'..='\u{036F}' | '\u{0E31}' | '\u{0E34}'..='\u{0E3A}' | '\u{0E47}'..='\u{0E4E}' | '\u{0EB1}' | '\u{0EB4}'..='\u{0EBC}' | '\u{0EC8}'..='\u{0ECD}')
+}
+
+/// Break `text` into lines that `fits`: at newlines and spaces, and inside a word that is wider
+/// than a line (Thai is written without spaces between words) between characters, never before
+/// a combining mark.
+pub fn wrap_with(text: &str, fits: impl Fn(&str) -> bool) -> Vec<String> {
+    let mut out = Vec::new();
+    for para in text.split('\n') {
+        let mut line = String::new();
+        for word in para.split(' ') {
+            let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
+            if fits(&candidate) {
+                line = candidate;
+                continue;
+            }
+            if !line.is_empty() {
+                out.push(std::mem::take(&mut line));
+            }
+            let mut piece = String::new();
+            for c in word.chars() {
+                let mut next = piece.clone();
+                next.push(c);
+                if !piece.is_empty() && !is_mark(c) && !fits(&next) {
+                    out.push(std::mem::take(&mut piece));
+                    next = c.to_string();
+                }
+                piece = next;
+            }
+            line = piece;
+        }
+        out.push(line);
+    }
+    out
+}
+
 /// OS/2 `fsType`: installable (0), editable (8) and preview & print (4) faces may be embedded;
 /// restricted-licence (2, alone) and bitmap-only (0x200) faces may not. No OS/2 table: allowed.
 pub fn embeddable(font: &FontRef<'_>) -> bool {
@@ -488,6 +553,17 @@ mod tests {
         assert_eq!(t0.name(b"Subtype"), Some(&b"Type0"[..]));
         assert_eq!(t0.name(b"Encoding"), Some(&b"Identity-H"[..]));
         assert_eq!(t0.name(b"BaseFont"), Some(&b"Anuphan-Regular"[..]));
+    }
+
+    #[test]
+    fn faces_are_embedded_once_per_document() {
+        let mut doc = Document::new_empty();
+        let face = EmbedFace::sarabun(false, false);
+        let a = embedded_font(&mut doc, &face).unwrap();
+        let b = embedded_font(&mut doc, &face).unwrap();
+        assert_eq!(a, b);
+        let bold = embedded_font(&mut doc, &EmbedFace::sarabun(true, false)).unwrap();
+        assert_ne!(a, bold);
     }
 
     #[test]

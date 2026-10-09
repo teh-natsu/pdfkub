@@ -441,9 +441,15 @@ pub(crate) fn type_box(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
     egui::Area::new(egui::Id::new(("fill-text", view.id.0))).order(egui::Order::Foreground).fixed_pos(pos).show(ctx, |ui| {
         let Some(t) = view.fill_text.as_mut() else { return };
         let width = ((t.text.len().max(8) as f32) * TEXT_SIZE as f32 * 0.6 * zoom).clamp(60.0, 600.0);
+        // Thai is embedded in Sarabun: preview it that way.
+        let font = if pdfcraft_fonts::win_ansi_covers(&t.text) {
+            egui::FontId::proportional((TEXT_SIZE as f32 * zoom).max(8.0))
+        } else {
+            crate::theme::sarabun((TEXT_SIZE as f32 * zoom).max(8.0), false)
+        };
         let r = ui.add(
             egui::TextEdit::singleline(&mut t.text)
-                .font(egui::FontId::proportional((TEXT_SIZE as f32 * zoom).max(8.0)))
+                .font(font)
                 .desired_width(width)
                 .background_color(Color32::from_rgba_unmultiplied(255, 255, 255, 230))
                 .text_color(Color32::BLACK)

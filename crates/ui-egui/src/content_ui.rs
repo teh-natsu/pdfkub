@@ -280,11 +280,16 @@ pub(crate) fn editor(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, ad
     egui::Area::new(egui::Id::new(("added-text", view.id.0))).order(egui::Order::Foreground).fixed_pos(r.min).show(ctx, |ui| {
         let Some(t) = view.content.draft.as_mut() else { return };
         let [cr, cg, cb] = t.style.color.map(|v| (v.clamp(0.0, 1.0) * 255.0) as u8);
+        // Preview in the face the text will be embedded with when that's Sarabun (chosen, or
+        // automatic for Thai).
+        let preview_size = (t.style.size as f32 * zoom).max(8.0);
+        let sarabun = t.style.font.as_ref().map_or_else(|| !pdfcraft_fonts::win_ansi_covers(&t.text), |f| f.name.starts_with("Sarabun"));
+        let preview = if sarabun { crate::theme::sarabun(preview_size, t.style.bold) } else { egui::FontId::proportional(preview_size) };
         ui.horizontal_top(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
             let resp = ui.add(
                 egui::TextEdit::multiline(&mut t.text)
-                    .font(egui::FontId::proportional((t.style.size as f32 * zoom).max(8.0)))
+                    .font(preview)
                     .desired_width(r.width().max(60.0))
                     .desired_rows(1)
                     .background_color(Color32::from_rgba_unmultiplied(255, 255, 255, 235))

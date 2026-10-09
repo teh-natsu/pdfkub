@@ -1172,6 +1172,16 @@ pub(crate) fn composer(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
 pub fn text_box_rect(at: [f64; 2], text: &str, size: f64) -> [f64; 4] {
     use pdfcraft_engine::annot_text::{text_width, wrap};
     let pad = 2.0;
+    if !pdfcraft_fonts::win_ansi_covers(text) {
+        // Thai is drawn in embedded Sarabun (pdfcraft-annot's `build_embedded`): measure with it.
+        let face = pdfcraft_fonts::EmbedFace::sarabun(false, false);
+        let longest = text.lines().map(|l| face.shape(l).width(size)).fold(0.0, f64::max);
+        let w = (longest + 2.0 * pad + 4.0).clamp(40.0, 300.0);
+        let lines = pdfcraft_fonts::wrap_with(text, |s| face.shape(s).width(size) <= w - 2.0 * pad).len().max(1);
+        let (_, step) = face.line_metrics();
+        let h = lines as f64 * size * step + 2.0 * pad + 2.0;
+        return [at[0], at[1] - h, at[0] + w, at[1]];
+    }
     let longest = text.lines().map(|l| text_width(l, size)).fold(0.0, f64::max);
     let w = (longest + 2.0 * pad + 4.0).clamp(40.0, 300.0);
     let lines = wrap(text, size, w - 2.0 * pad).len().max(1);

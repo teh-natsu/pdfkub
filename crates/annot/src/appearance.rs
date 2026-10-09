@@ -634,6 +634,70 @@ pub fn build(d: &Dict) -> Option<Stream> {
     Some(form(rect, &out, res))
 }
 
+/// The normal appearance of a FreeText annotation (text box, typewriter, callout) whose text
+/// needs more than WinAnsi (Thai): drawn like [`build`], with the text in Sarabun embedded in
+/// `doc`. `None` for anything else, where [`build`] applies.
+pub fn build_embedded(doc: &mut pdfcraft_cos::Document, d: &Dict) -> Option<Stream> {
+    use pdfcraft_fonts::EmbedFace;
+    if d.name(b"Subtype") != Some(b"FreeText") {
+        return None;
+    }
+    let text = d.get(b"Contents").and_then(|o| o.as_string()).map(PdfString::to_text).unwrap_or_default();
+    if pdfcraft_fonts::win_ansi_covers(&text) {
+        return None;
+    }
+    // The box, border and callout as `build` draws them, then the text.
+    let mut blank = d.clone();
+    blank.set(b"Contents".to_vec(), PdfString::text(""));
+    let base = build(&blank)?;
+    let mut out = base.decoded().ok()?;
+    let mut res = base.dict.get(b"Resources").and_then(|r| r.as_dict().cloned()).unwrap_or_default();
+    let full = nums(d, b"Rect").filter(|r| r.len() == 4)?;
+    let full = [full[0].min(full[2]), full[1].min(full[3]), full[0].max(full[2]), full[1].max(full[3])];
+    let mut rect = full;
+    if d.contains(b"CL") {
+        let rd = nums(d, b"RD").filter(|r| r.len() == 4 && r.iter().all(|x| *x >= 0.0))?;
+        rect = [full[0] + rd[0], full[1] + rd[1], full[2] - rd[2], full[3] - rd[3]];
+    }
+    let (text_color, size) = parse_da(d);
+    let bw = if d.contains(b"BS") || d.contains(b"Border") { border_width(d) } else { 0.0 };
+    let pad = 2.0 + bw;
+    let width = (rect[2] - rect[0] - 2.0 * pad).max(1.0);
+    let q = d.int(b"Q").unwrap_or(0);
+    let face = EmbedFace::sarabun(false, false);
+    let font = pdfcraft_fonts::embedded_font(doc, &face).ok()?;
+    let name = format!("PCE{}", font.num);
+    let (first, step) = face.line_metrics();
+    out.extend(format!("BT\n/{name} {} Tf\n{}", n(size), rg(text_color)).bytes());
+    let mut y = rect[3] - pad - size * first;
+    for line in pdfcraft_fonts::wrap_with(&text, |s| face.shape(s).width(size) <= width) {
+        if y < rect[1] - size {
+            break;
+        }
+        let shaped = face.shape(&line);
+        let w = shaped.width(size);
+        let scale = size / shaped.units_per_em;
+        let x0 = match q {
+            1 => rect[0] + pad + (width - w) / 2.0,
+            2 => rect[2] - pad - w,
+            _ => rect[0] + pad,
+        };
+        let codes = face.codes(doc, font, &line, &shaped).ok()?;
+        let units: String = line.encode_utf16().map(|u| format!("{u:04X}")).collect();
+        out.extend(format!("/Span << /ActualText <FEFF{units}> >> BDC\n").bytes());
+        for (g, code) in shaped.glyphs.iter().zip(codes) {
+            out.extend(format!("1 0 0 1 {} {} Tm <{code:04X}> Tj\n", n(x0 + g.x * scale), n(y + g.y * scale)).bytes());
+        }
+        out.extend_from_slice(b"EMC\n");
+        y -= size * step;
+    }
+    out.extend_from_slice(b"ET\n");
+    let mut fonts = res.get(b"Font").and_then(|f| f.as_dict().cloned()).unwrap_or_default();
+    fonts.set(name.into_bytes(), Object::Ref(font));
+    res.set(b"Font".to_vec(), Object::Dict(fonts));
+    Some(form(full, &out, res))
+}
+
 /// A rubber stamp: a rounded frame (a pointed tag for sign-here stamps) with the label in bold
 /// capitals, and the dynamic stamps' "By … at …" line.
 fn stamp(kind: crate::StampKind, rect: [f64; 4], col: Rgb, by: Option<&str>, opacity: f64, mut res: Dict) -> Stream {
