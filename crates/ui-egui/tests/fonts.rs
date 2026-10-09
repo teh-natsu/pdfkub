@@ -8,6 +8,7 @@ const JAPANESE: &str = "日本語の文字";
 const CHINESE: &str = "简体中文欢迎";
 const ARABIC: &str = "واحد اثنين";
 const TELUGU: &str = "తెలుగు ఫైల్";
+const THAI: &str = "ไฟล์ภาษาไทยที่ไม่ใช่กล่อง";
 
 fn families() -> Vec<FontId> {
     vec![FontId::proportional(13.0), FontId::monospace(13.0), theme::medium(13.0), theme::semibold(17.0)]
@@ -126,6 +127,24 @@ fn telugu_ui_text_uses_craft_fonts() {
 
 /// On a machine with a suitable installed font, the installed definitions end every family
 /// with it and Arabic text has glyphs; the embedded-only definitions never name it.
+/// Thai text (file names, document titles, form values) renders with Anuphan, which follows the
+/// app's own font in every family, with or without craft-fonts and the system fallback.
+#[test]
+fn thai_ui_text_uses_anuphan() {
+    let defs = theme::font_definitions();
+    for family in [FontFamily::Proportional, FontFamily::Monospace] {
+        let stack = &defs.families[&family];
+        assert_eq!(stack.get(1).map(String::as_str), Some("Anuphan"), "{family:?}: {stack:?}");
+    }
+    for (family, thai) in [("medium", "Anuphan-Medium"), ("semibold", "Anuphan-SemiBold")] {
+        assert_eq!(defs.families[&FontFamily::Name(family.into())][1], thai);
+    }
+    let mut fonts = Fonts::new(TextOptions::default(), defs);
+    for id in families() {
+        assert!(fonts.has_glyphs(&id, THAI), "{id:?} lacks {THAI}");
+    }
+}
+
 #[test]
 fn system_fallback_fills_missing_scripts() {
     assert!(!theme::font_definitions().font_data.contains_key(theme::SYSTEM_FALLBACK));

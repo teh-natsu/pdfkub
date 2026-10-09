@@ -36,6 +36,8 @@ mod compare_ui;
 pub mod control;
 mod create_multiple_ui;
 mod create_ui;
+// PdfKub's About dialog has no Contributors or Models tab; the module stays for upstream merges.
+#[allow(dead_code)]
 mod credits;
 mod crop;
 mod drag_pointer;

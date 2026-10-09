@@ -108,7 +108,7 @@ fn stdout_line(line: std::fmt::Arguments<'_>) -> Result<(), CliError> {
 
 fn version() -> Result<(), CliError> {
     stdout_line(format_args!("pdfkub-cli {}", env!("CARGO_PKG_VERSION")))?;
-    stdout_line(format_args!("Based on PdfCraft by the ArtCraft team: {}", pdfcraft_engine::links::UPSTREAM))?;
+    stdout_line(format_args!("Based on PdfCraft by the ArtCraft team."))?;
     Ok(())
 }
 

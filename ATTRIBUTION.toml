@@ -2024,6 +2024,39 @@ usage = "UI icon, embedded via crates/ui-egui/src/icon_data.rs"
 sha256 = "486119c5803718fce74a1e2fe9b93bca4864fd9178139ca355339011e989bcb8"
 
 [[asset]]
+path = "assets/fonts/Anuphan-Regular.ttf"
+title = "Anuphan Regular"
+author = "The Anuphan Project Authors (Cadson Demak); static Regular instance of the variable font made for PdfKub with fontTools"
+source = "https://github.com/google/fonts/tree/main/ofl/anuphan (Anuphan[wght].ttf, version 3.002)"
+licence = "OFL-1.1"
+licence_file = "assets/fonts/OFL-Anuphan.txt"
+kind = "font"
+usage = "UI font for Thai, embedded in the app"
+sha256 = "d0ddc03100fbfaacb68308c870d86adc791217320143e466409301a94ec700f4"
+
+[[asset]]
+path = "assets/fonts/Anuphan-Medium.ttf"
+title = "Anuphan Medium"
+author = "The Anuphan Project Authors (Cadson Demak); static Medium instance of the variable font made for PdfKub with fontTools"
+source = "https://github.com/google/fonts/tree/main/ofl/anuphan (Anuphan[wght].ttf, version 3.002)"
+licence = "OFL-1.1"
+licence_file = "assets/fonts/OFL-Anuphan.txt"
+kind = "font"
+usage = "UI font for Thai, embedded in the app"
+sha256 = "7303d57ee1e4dcc9468a66d0fcb37aed1c4b9ad8732438b8097db914811a5507"
+
+[[asset]]
+path = "assets/fonts/Anuphan-SemiBold.ttf"
+title = "Anuphan SemiBold"
+author = "The Anuphan Project Authors (Cadson Demak); static SemiBold instance of the variable font made for PdfKub with fontTools"
+source = "https://github.com/google/fonts/tree/main/ofl/anuphan (Anuphan[wght].ttf, version 3.002)"
+licence = "OFL-1.1"
+licence_file = "assets/fonts/OFL-Anuphan.txt"
+kind = "font"
+usage = "UI font for Thai, embedded in the app"
+sha256 = "b21d4e576e813b21d9bf11e802c44298fbfed58c10cffcec44b32f8052f89201"
+
+[[asset]]
 path = "assets/fonts/Inter-Regular.ttf"
 title = "Inter Regular"
 author = "The Inter Project Authors (Rasmus Andersson)"

@@ -158,9 +158,10 @@ pub fn installed_font_definitions(prefer_hans: bool) -> FontDefinitions {
     fonts
 }
 
-/// The interface fonts: Inter (and JetBrains Mono for code) first, then egui's defaults, then
-/// the CJK, Arabic and Telugu faces of the optional craft-fonts build input as the last fallback
-/// in every family. Without craft-fonts there is no Japanese, Chinese, Arabic or Telugu face here.
+/// The interface fonts: Inter (and JetBrains Mono for code) first, then Anuphan for Thai, then
+/// egui's defaults, then the CJK, Arabic and Telugu faces of the optional craft-fonts build input
+/// as the last fallback in every family. Without craft-fonts there is no Japanese, Chinese,
+/// Arabic or Telugu face here.
 pub fn font_definitions() -> FontDefinitions {
     font_definitions_for(false)
 }
@@ -178,8 +179,13 @@ pub fn font_definitions_for(prefer_hans: bool) -> FontDefinitions {
     add(&mut fonts, "Inter-Medium", include_bytes!("../../../assets/fonts/Inter-Medium.ttf"));
     add(&mut fonts, "Inter-SemiBold", include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf"));
     add(&mut fonts, "JetBrainsMono", include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf"));
-    fonts.families.entry(FontFamily::Proportional).or_default().insert(0, "Inter".to_owned());
-    fonts.families.entry(FontFamily::Monospace).or_default().insert(0, "JetBrainsMono".to_owned());
+    // Thai: Inter and egui's defaults have no Thai letters, so Anuphan follows Inter in every
+    // family, at the same three weights.
+    add(&mut fonts, "Anuphan", include_bytes!("../../../assets/fonts/Anuphan-Regular.ttf"));
+    add(&mut fonts, "Anuphan-Medium", include_bytes!("../../../assets/fonts/Anuphan-Medium.ttf"));
+    add(&mut fonts, "Anuphan-SemiBold", include_bytes!("../../../assets/fonts/Anuphan-SemiBold.ttf"));
+    fonts.families.entry(FontFamily::Proportional).or_default().splice(0..0, ["Inter".to_owned(), "Anuphan".to_owned()]);
+    fonts.families.entry(FontFamily::Monospace).or_default().splice(0..0, ["JetBrainsMono".to_owned(), "Anuphan".to_owned()]);
     // The same static bytes pdfcraft-fonts uses for Japanese/Chinese text in PDFs: one copy, not two.
     for face in pdfcraft_fonts::ui_cjk_fonts(prefer_hans) {
         let name = face.name();
@@ -206,8 +212,8 @@ pub fn font_definitions_for(prefer_hans: bool) -> FontDefinitions {
         }
     }
     let fallback: Vec<String> = fonts.families[&FontFamily::Proportional].clone();
-    for (fam, primary) in [("medium", "Inter-Medium"), ("semibold", "Inter-SemiBold")] {
-        let mut stack = vec![primary.to_owned()];
+    for (fam, primary, thai) in [("medium", "Inter-Medium", "Anuphan-Medium"), ("semibold", "Inter-SemiBold", "Anuphan-SemiBold")] {
+        let mut stack = vec![primary.to_owned(), thai.to_owned()];
         stack.extend(fallback.iter().cloned());
         fonts.families.insert(FontFamily::Name(fam.into()), stack);
     }
