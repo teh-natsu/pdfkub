@@ -90,6 +90,24 @@ fn the_field_tree_is_read_with_inheritance() {
     assert_eq!(field(&all, "address.city").quadding, 1);
 }
 
+/// Thai values are drawn with embedded Sarabun (the WinAnsi font would show question marks);
+/// Latin values keep the field's own font.
+#[test]
+fn thai_values_are_drawn_with_an_embedded_font() {
+    let mut doc = fixture();
+    set_value(&mut doc, "name", &FieldValue::Text("นายสมชาย ใจดี".into())).unwrap();
+    set_value(&mut doc, "notes", &FieldValue::Text("ที่อยู่ ๑๒๓ ถนนพหลโยธิน แขวงจตุจักร เขตจตุจักร กรุงเทพมหานคร".into())).unwrap();
+    set_value(&mut doc, "address.city", &FieldValue::Text("Bangkok".into())).unwrap();
+    let doc = reopen(&doc);
+    let all = fields(&doc);
+    assert_eq!(field(&all, "name").value, ["นายสมชาย ใจดี"]);
+    let name = ap(&doc, &field(&all, "name").widgets[0]);
+    assert!(name.contains("/PCE") && name.contains("/ActualText <FEFF0E190E320E22") && !name.contains("(?"), "{name}");
+    let notes = ap(&doc, &field(&all, "notes").widgets[0]);
+    assert!(notes.matches("/ActualText").count() >= 2, "wrapped: {notes}");
+    assert!(ap(&doc, &field(&all, "address.city").widgets[0]).contains("(Bangkok) Tj"));
+}
+
 #[test]
 fn text_fields_get_new_appearances() {
     let mut doc = fixture();

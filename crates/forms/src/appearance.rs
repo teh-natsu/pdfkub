@@ -10,7 +10,7 @@
 //! visible. Widths use the approximate Helvetica metrics of `pdfcraft-fonts`.
 
 use pdfcraft_cos::{Dict, Document, Object, Stream};
-use pdfcraft_fonts::{helvetica_width, literal, win_ansi, wrap};
+use pdfcraft_fonts::{EmbedFace, helvetica_width, literal, win_ansi, win_ansi_covers, wrap, wrap_with};
 
 use crate::{Field, FieldKind, Widget, acroform, flags};
 
@@ -171,13 +171,14 @@ fn frame(doc: &Document, wd: &Dict, w: f64, h: f64) -> (String, f64) {
 }
 
 /// The appearance of a text or choice field's widget showing `values`.
-pub fn field_appearance(doc: &Document, f: &Field, w: &Widget, values: &[String]) -> Stream {
+pub fn field_appearance(doc: &mut Document, f: &Field, w: &Widget, values: &[String]) -> Stream {
     field_appearance_as(doc, f, w, values, true)
 }
 
 /// [`field_appearance`], where `format` false means `values` are already what to show (a
-/// custom Format script ran).
-pub fn field_appearance_as(doc: &Document, f: &Field, w: &Widget, values: &[String], format: bool) -> Stream {
+/// custom Format script ran). Text the field's WinAnsi font can't show (Thai) is drawn with
+/// Sarabun embedded in `doc`; the field's `/DA` is left as it is.
+pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[String], format: bool) -> Stream {
     // The Format event: what is shown, not what is stored.
     let formatted: Vec<String>;
     let values = if format
@@ -194,22 +195,33 @@ pub fn field_appearance_as(doc: &Document, f: &Field, w: &Widget, values: &[Stri
     let wd = wobj.as_dict().cloned().unwrap_or_default();
     let (width, height) = ((w.rect[2] - w.rect[0]).max(1.0), (w.rect[3] - w.rect[1]).max(1.0));
     let da = parse_da(wd.get(b"DA").and_then(|o| doc.resolve(o).as_string().map(|s| s.to_text())).as_deref().unwrap_or(&f.da));
-    let (font_name, font_obj) = match dr_font(doc, &da.font) {
-        Some(o) => (da.font.clone(), o),
-        None => ("Helv".to_string(), helvetica()),
+    let thai = values.iter().chain(f.options.iter().map(|(_, d)| d)).any(|s| !win_ansi_covers(s));
+    let embedded = if thai {
+        let face = EmbedFace::sarabun(false, false);
+        pdfcraft_fonts::embedded_font(doc, &face).ok().map(|r| (face, r))
+    } else {
+        None
+    };
+    let face = embedded.as_ref().map(|(f, _)| f.clone());
+    let (font_name, font_obj) = match (&embedded, dr_font(doc, &da.font)) {
+        (Some((_, r)), _) => (format!("PCE{}", r.num), Object::Ref(*r)),
+        (None, Some(o)) => (da.font.clone(), o),
+        (None, None) => ("Helv".to_string(), helvetica()),
+    };
+    let measure = |s: &str, size: f64| face.as_ref().map_or_else(|| helvetica_width(s, size), |fc| fc.shape(s).width(size));
+    let wrap_lines = |s: &str, size: f64, width: f64| match &face {
+        Some(fc) => wrap_with(s, |line| fc.shape(line).width(size) <= width),
+        None => wrap(s, size, width),
     };
     let (mut c, bw) = frame(doc, &wd, width, height);
     let pad = 2.0 + bw;
     let inner_w = (width - 2.0 * pad).max(1.0);
     let q = wd.get(b"Q").and_then(|o| doc.resolve(o).as_int()).unwrap_or(f.quadding);
-    let mut body: Vec<u8> = Vec::new();
-    let show = |body: &mut Vec<u8>, x: f64, y: f64, text: &str| {
-        body.extend(format!("1 0 0 1 {} {} Tm ", n(x), n(y)).bytes());
-        body.extend(literal(&win_ansi(text)));
-        body.extend_from_slice(b" Tj\n");
-    };
+    // Where each piece of text goes; drawn once the layout is done.
+    let mut placed: Vec<(f64, f64, String)> = Vec::new();
+    let show = |placed: &mut Vec<(f64, f64, String)>, x: f64, y: f64, text: &str| placed.push((x, y, text.to_owned()));
     let x_for = |text: &str, size: f64| -> f64 {
-        let tw = helvetica_width(text, size);
+        let tw = measure(text, size);
         match q {
             1 => pad + (inner_w - tw) / 2.0,
             2 => width - pad - tw,
@@ -233,7 +245,7 @@ pub fn field_appearance_as(doc: &Document, f: &Field, w: &Widget, values: &[Stri
                 if values.contains(export) {
                     c.push_str(&format!("0.6 0.75 0.86 rg\n{} {} {} {} re f\n", n(bw), n(y - line), n(width - 2.0 * bw), n(line)));
                 }
-                show(&mut body, pad, y - line + size * 0.25, display);
+                show(&mut placed, pad, y - line + size * 0.25, display);
                 y -= line;
             }
         }
@@ -249,22 +261,22 @@ pub fn field_appearance_as(doc: &Document, f: &Field, w: &Widget, values: &[Stri
                 if size == 0.0 {
                     // Auto size: the largest size (≤ 12) whose wrapped lines fit the height.
                     size = 12.0;
-                    while size > 4.0 && wrap(&text, size, inner_w).len() as f64 * size * 1.15 > height - 2.0 * pad {
+                    while size > 4.0 && wrap_lines(&text, size, inner_w).len() as f64 * size * 1.15 > height - 2.0 * pad {
                         size -= 0.5;
                     }
                 }
                 let mut y = height - pad - size * 0.85;
-                for line in wrap(&text, size, inner_w) {
+                for line in wrap_lines(&text, size, inner_w) {
                     if y < -size {
                         break;
                     }
-                    show(&mut body, x_for(&line, size), y, &line);
+                    show(&mut placed, x_for(&line, size), y, &line);
                     y -= size * 1.15;
                 }
             } else {
                 if size == 0.0 {
                     size = ((height - 2.0 * pad) / 1.15).clamp(4.0, 12.0);
-                    let tw = helvetica_width(&text, size);
+                    let tw = measure(&text, size);
                     if tw > inner_w && !comb {
                         size = (size * inner_w / tw).max(4.0);
                     }
@@ -276,11 +288,32 @@ pub fn field_appearance_as(doc: &Document, f: &Field, w: &Widget, values: &[Stri
                     let cell = width / cells as f64;
                     for (i, ch) in text.chars().take(cells).enumerate() {
                         let s = ch.to_string();
-                        show(&mut body, cell * i as f64 + (cell - helvetica_width(&s, size)) / 2.0, y, &s);
+                        show(&mut placed, cell * i as f64 + (cell - measure(&s, size)) / 2.0, y, &s);
                     }
                 } else {
-                    show(&mut body, x_for(&text, size), y, &text);
+                    show(&mut placed, x_for(&text, size), y, &text);
                 }
+            }
+        }
+    }
+    let mut body: Vec<u8> = Vec::new();
+    for (x, y, text) in &placed {
+        match &embedded {
+            Some((fc, font)) => {
+                let shaped = fc.shape(text);
+                let scale = size / shaped.units_per_em;
+                let Ok(codes) = fc.codes(doc, *font, text, &shaped) else { continue };
+                let units: String = text.encode_utf16().map(|u| format!("{u:04X}")).collect();
+                body.extend(format!("/Span << /ActualText <FEFF{units}> >> BDC\n").bytes());
+                for (g, code) in shaped.glyphs.iter().zip(codes) {
+                    body.extend(format!("1 0 0 1 {} {} Tm <{code:04X}> Tj\n", n(x + g.x * scale), n(y + g.y * scale)).bytes());
+                }
+                body.extend_from_slice(b"EMC\n");
+            }
+            None => {
+                body.extend(format!("1 0 0 1 {} {} Tm ", n(*x), n(*y)).bytes());
+                body.extend(literal(&win_ansi(text)));
+                body.extend_from_slice(b" Tj\n");
             }
         }
     }

@@ -639,6 +639,9 @@ pub fn build(d: &Dict) -> Option<Stream> {
 /// `doc`. `None` for anything else, where [`build`] applies.
 pub fn build_embedded(doc: &mut pdfcraft_cos::Document, d: &Dict) -> Option<Stream> {
     use pdfcraft_fonts::EmbedFace;
+    if d.name(b"Subtype") == Some(b"Stamp") {
+        return stamp_embedded(doc, d);
+    }
     if d.name(b"Subtype") != Some(b"FreeText") {
         return None;
     }
@@ -696,6 +699,51 @@ pub fn build_embedded(doc: &mut pdfcraft_cos::Document, d: &Dict) -> Option<Stre
     fonts.set(name.into_bytes(), Object::Ref(font));
     res.set(b"Font".to_vec(), Object::Dict(fonts));
     Some(form(full, &out, res))
+}
+
+/// A PdfKub stamp whose "By … at …" line needs more than WinAnsi (a Thai name): the stamp as
+/// [`build`] draws it, with that line in Sarabun embedded in `doc`.
+fn stamp_embedded(doc: &mut pdfcraft_cos::Document, d: &Dict) -> Option<Stream> {
+    use pdfcraft_fonts::EmbedFace;
+    let by = d.get(b"PCByLine").and_then(|o| o.as_string()).map(PdfString::to_text)?;
+    if pdfcraft_fonts::win_ansi_covers(&by) || !matches!(d.get(b"PCStamp"), Some(Object::Bool(true))) {
+        return None;
+    }
+    let kind = crate::StampKind::from_name(d.name(b"Name")?)?;
+    // The same layout with an invisible by-line, then the real one on top.
+    let mut blank = d.clone();
+    blank.set(b"PCByLine".to_vec(), PdfString::text(" "));
+    let base = build(&blank)?;
+    let mut out = base.decoded().ok()?;
+    let mut res = base.dict.get(b"Resources").and_then(|r| r.as_dict().cloned()).unwrap_or_default();
+    let rect = nums(d, b"Rect").filter(|r| r.len() == 4)?;
+    let rect = [rect[0].min(rect[2]), rect[1].min(rect[3]), rect[0].max(rect[2]), rect[1].max(rect[3])];
+    let h = rect[3] - rect[1];
+    let col = color(d, b"C").flatten().unwrap_or(kind.color());
+    let text_col = if kind.group() == crate::StampGroup::SignHere { [1.0, 1.0, 1.0] } else { col };
+    let area = stamp_text_area(kind, rect);
+    let face = EmbedFace::sarabun(false, false);
+    let font = pdfcraft_fonts::embedded_font(doc, &face).ok()?;
+    let shaped = face.shape(&by);
+    let mut size = h * 0.22;
+    if shaped.width(size) > area.1 - area.0 - 4.0 {
+        size *= (area.1 - area.0 - 4.0) / shaped.width(size);
+    }
+    let scale = size / shaped.units_per_em;
+    let x0 = area.0 + (area.1 - area.0 - shaped.width(size)) / 2.0;
+    let y = rect[1] + h * 0.18;
+    let codes = face.codes(doc, font, &by, &shaped).ok()?;
+    let name = format!("PCE{}", font.num);
+    let units: String = by.encode_utf16().map(|u| format!("{u:04X}")).collect();
+    out.extend(format!("BT\n{}/{name} {} Tf\n/Span << /ActualText <FEFF{units}> >> BDC\n", rg(text_col), n(size)).bytes());
+    for (g, code) in shaped.glyphs.iter().zip(codes) {
+        out.extend(format!("1 0 0 1 {} {} Tm <{code:04X}> Tj\n", n(x0 + g.x * scale), n(y + g.y * scale)).bytes());
+    }
+    out.extend_from_slice(b"EMC\nET\n");
+    let mut fonts = res.get(b"Font").and_then(|f| f.as_dict().cloned()).unwrap_or_default();
+    fonts.set(name.into_bytes(), Object::Ref(font));
+    res.set(b"Font".to_vec(), Object::Dict(fonts));
+    Some(form(rect, &out, res))
 }
 
 /// A rubber stamp: a rounded frame (a pointed tag for sign-here stamps) with the label in bold
@@ -777,7 +825,7 @@ fn stamp(kind: crate::StampKind, rect: [f64; 4], col: Rgb, by: Option<&str>, opa
     }
     let label = kind.label();
     let (title_h, by_h) = if by.is_some() { (h * 0.5, h * 0.22) } else { (h * 0.52, 0.0) };
-    let text_area = if kind.group() == crate::StampGroup::SignHere { (x0 + h * 0.45, x1 - lw * 2.0) } else { (x0 + lw * 2.0, x1 - lw * 2.0) };
+    let text_area = stamp_text_area(kind, rect);
     let mut size = title_h;
     let tw = text_width(label, size) * 1.12;
     if tw > text_area.1 - text_area.0 - 4.0 {
@@ -820,6 +868,15 @@ fn stamp(kind: crate::StampKind, rect: [f64; 4], col: Rgb, by: Option<&str>, opa
     fonts.set(b"Helv".to_vec(), font("Helvetica"));
     res.set(b"Font".to_vec(), Object::Dict(fonts));
     form(rect, &out, res)
+}
+
+/// The left and right ends of a stamp's text, inside its frame (after the tag's point for
+/// sign-here stamps).
+fn stamp_text_area(kind: crate::StampKind, rect: [f64; 4]) -> (f64, f64) {
+    let [x0, y0, x1, y1] = rect;
+    let h = y1 - y0;
+    let lw = (h * 0.07).clamp(1.0, 3.0);
+    if kind.group() == crate::StampGroup::SignHere { (x0 + h * 0.45, x1 - lw * 2.0) } else { (x0 + lw * 2.0, x1 - lw * 2.0) }
 }
 
 /// An ellipse inscribed in a rectangle, as four Bézier arcs.

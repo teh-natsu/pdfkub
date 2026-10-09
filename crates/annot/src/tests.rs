@@ -426,6 +426,21 @@ fn thai_typed_text_embeds_sarabun() {
     assert!(ap_content(&doc, &list(&doc, 1)[c]).contains("(Ada Lovelace) Tj"));
 }
 
+/// A dynamic stamp by a user with a Thai name: the by-line is drawn with embedded Sarabun.
+#[test]
+fn thai_stamp_by_lines_embed_sarabun() {
+    let mut doc = fixture();
+    let shape = Shape::Stamp {
+        rect: [100.0, 100.0, 260.0, 142.0], stamp: StampKind::DynApproved, by: Some("โดย สมชาย เวลา 14:14 น.".into())
+    };
+    let style = Style::default_for(&shape);
+    let i = add_annotation(&mut doc, &NewAnnotation { page: 1, shape, style, contents: String::new(), author: "สมชาย".into() }, &meta("x")).unwrap();
+    let doc = reopen(&doc);
+    let ap = ap_content(&doc, &list(&doc, 1)[i]);
+    assert!(ap.contains("(APPROVED) Tj") && ap.contains("/PCE") && ap.contains("/ActualText <FEFF0E420E140E22"), "{ap}");
+    assert!(!ap.contains("(?"), "{ap}");
+}
+
 #[test]
 fn fill_and_sign_items_are_drawn() {
     let mut doc = fixture();
