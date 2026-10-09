@@ -4,7 +4,7 @@
 
 Every asset PdfKub includes, bundles or uses to build its published material, with its author, source and licence. The policy is in [AGENTS.md](AGENTS.md) §1. The machine-readable list, with SHA-256 hashes, is [ATTRIBUTION.toml](ATTRIBUTION.toml). Licence texts are kept beside the assets and summarised in [NOTICE](NOTICE).
 
-## In this repository (233)
+## In this repository (237)
 
 | Asset | Title | Author | Licence | Source | Used for |
 |---|---|---|---|---|---|
@@ -194,6 +194,10 @@ Every asset PdfKub includes, bundles or uses to build its published material, wi
 | `assets/fonts/Anuphan-Regular.ttf` | Anuphan Regular | The Anuphan Project Authors (Cadson Demak); static Regular instance of the variable font made for PdfKub with fontTools | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/anuphan (Anuphan[wght].ttf, version 3.002) | UI font for Thai, embedded in the app |
 | `assets/fonts/Anuphan-Medium.ttf` | Anuphan Medium | The Anuphan Project Authors (Cadson Demak); static Medium instance of the variable font made for PdfKub with fontTools | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/anuphan (Anuphan[wght].ttf, version 3.002) | UI font for Thai, embedded in the app |
 | `assets/fonts/Anuphan-SemiBold.ttf` | Anuphan SemiBold | The Anuphan Project Authors (Cadson Demak); static SemiBold instance of the variable font made for PdfKub with fontTools | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/anuphan (Anuphan[wght].ttf, version 3.002) | UI font for Thai, embedded in the app |
+| `assets/fonts/Sarabun-Regular.ttf` | Sarabun Regular | The Sarabun Project Authors (Cadson Demak) | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/sarabun | Embedded in PDFs for added Thai text (the default Thai face) |
+| `assets/fonts/Sarabun-Bold.ttf` | Sarabun Bold | The Sarabun Project Authors (Cadson Demak) | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/sarabun | Embedded in PDFs for added Thai text (the default Thai face) |
+| `assets/fonts/Sarabun-Italic.ttf` | Sarabun Italic | The Sarabun Project Authors (Cadson Demak) | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/sarabun | Embedded in PDFs for added Thai text (the default Thai face) |
+| `assets/fonts/Sarabun-BoldItalic.ttf` | Sarabun Bold Italic | The Sarabun Project Authors (Cadson Demak) | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/sarabun | Embedded in PDFs for added Thai text (the default Thai face) |
 | `assets/fonts/Inter-Regular.ttf` | Inter Regular | The Inter Project Authors (Rasmus Andersson) | OFL-1.1 | https://github.com/rsms/inter | UI font, embedded in the app; demo PDF labels |
 | `assets/fonts/Inter-Medium.ttf` | Inter Medium | The Inter Project Authors (Rasmus Andersson) | OFL-1.1 | https://github.com/rsms/inter | UI font, embedded in the app; demo PDF labels |
 | `assets/fonts/Inter-SemiBold.ttf` | Inter SemiBold | The Inter Project Authors (Rasmus Andersson) | OFL-1.1 | https://github.com/rsms/inter | UI font, embedded in the app; demo PDF labels |

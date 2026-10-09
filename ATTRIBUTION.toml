@@ -19,7 +19,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Simplified Chinese UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "786a3727645123bee042b5625ea69b0bc80f88a9faaf9802cfd6f3115a2e1ab6"
+sha256 = "68542dc5eeb0f6eca9ae41e7ed97e1dad31f6d1f0066d1e771f0c1f0c5799b81"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/zh-hant.tsv"
@@ -30,7 +30,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Traditional Chinese UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "7a9c0f472226b563be0928fa6abcee01917f6654036aac657914270a0cc2f673"
+sha256 = "f4dd7fc6c7450e71acf7b78db9b798839044ad9b21c707fa760573b0cbab8874"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/cs.tsv"
@@ -63,7 +63,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Spanish UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "c0d702e4ffdadc99966710e65a0f9eab7a6973131fe1bf87ee3e8b1e1096c5f8"
+sha256 = "c3d738504a17c10952822eeb787b860b375dc07addede1f3a2c9c4d7f63e2c21"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/fr.tsv"
@@ -74,7 +74,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "French UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "54492f6c9695f4e209aaadb6c134fb818bcec13cc61fa86e8788de35ce79b857"
+sha256 = "0ffec8043a56814c19f19ec3f3f330b1feb43355a1194aff56808470764d891e"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/te.tsv"
@@ -96,7 +96,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Russian UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "561e1229d374ef7ef2fbd2fd0172956dc2ce14dc09c08906ccdd3321c052428e"
+sha256 = "7594a2336150d2dfed59868631fdfb1db42a6f9090a10bfe6731c20f4fe91edd"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/ja.tsv"
@@ -107,7 +107,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Japanese UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "2b862406f41a04469efcf48353097b06fd9c879197586847528d740e4a034641"
+sha256 = "f51bd4fb1a198a2da24a938a6365d0708e46768352a3ae8d48dbcea56a739058"
 
 [[asset]]
 path = "assets/icons/accessibility.svg"
@@ -2055,6 +2055,50 @@ licence_file = "assets/fonts/OFL-Anuphan.txt"
 kind = "font"
 usage = "UI font for Thai, embedded in the app"
 sha256 = "b21d4e576e813b21d9bf11e802c44298fbfed58c10cffcec44b32f8052f89201"
+
+[[asset]]
+path = "assets/fonts/Sarabun-Regular.ttf"
+title = "Sarabun Regular"
+author = "The Sarabun Project Authors (Cadson Demak)"
+source = "https://github.com/google/fonts/tree/main/ofl/sarabun"
+licence = "OFL-1.1"
+licence_file = "assets/fonts/OFL-Sarabun.txt"
+kind = "font"
+usage = "Embedded in PDFs for added Thai text (the default Thai face)"
+sha256 = "226d4f368fbc0457990ddef2692679badfd2c1a4e89e5ac4d43c10ba7743b2f1"
+
+[[asset]]
+path = "assets/fonts/Sarabun-Bold.ttf"
+title = "Sarabun Bold"
+author = "The Sarabun Project Authors (Cadson Demak)"
+source = "https://github.com/google/fonts/tree/main/ofl/sarabun"
+licence = "OFL-1.1"
+licence_file = "assets/fonts/OFL-Sarabun.txt"
+kind = "font"
+usage = "Embedded in PDFs for added Thai text (the default Thai face)"
+sha256 = "d38308ca27d067b9a1b79006337c1f9a66c29aa016d96a9d88d3801da7fa83b9"
+
+[[asset]]
+path = "assets/fonts/Sarabun-Italic.ttf"
+title = "Sarabun Italic"
+author = "The Sarabun Project Authors (Cadson Demak)"
+source = "https://github.com/google/fonts/tree/main/ofl/sarabun"
+licence = "OFL-1.1"
+licence_file = "assets/fonts/OFL-Sarabun.txt"
+kind = "font"
+usage = "Embedded in PDFs for added Thai text (the default Thai face)"
+sha256 = "595a968e97a8b8179a6bde2d74d4f91b11475dcfb6cf270037d76d8ed71160ea"
+
+[[asset]]
+path = "assets/fonts/Sarabun-BoldItalic.ttf"
+title = "Sarabun Bold Italic"
+author = "The Sarabun Project Authors (Cadson Demak)"
+source = "https://github.com/google/fonts/tree/main/ofl/sarabun"
+licence = "OFL-1.1"
+licence_file = "assets/fonts/OFL-Sarabun.txt"
+kind = "font"
+usage = "Embedded in PDFs for added Thai text (the default Thai face)"
+sha256 = "5ef1b930f9a3afed5ec83374b5617cad3a89d91a8fc5e372dc028c2aa2950f8d"
 
 [[asset]]
 path = "assets/fonts/Inter-Regular.ttf"

@@ -35,30 +35,49 @@ fn style(a: &Args, t: &mut AddedText) -> Result<()> {
     if let Some(s) = a.opt_num("size")? {
         t.size = s;
     }
-    let mut anuphan = t.font.as_ref().is_some_and(|f| f.name.starts_with("Anuphan"));
+    #[derive(PartialEq)]
+    enum Bundled {
+        Sarabun,
+        Anuphan,
+    }
+    let mut bundled = t.font.as_ref().and_then(|f| {
+        if f.name.starts_with("Sarabun") {
+            Some(Bundled::Sarabun)
+        } else if f.name.starts_with("Anuphan") {
+            Some(Bundled::Anuphan)
+        } else {
+            None
+        }
+    });
     if let Some(f) = a.opt_str("font")? {
-        anuphan = false;
+        bundled = None;
         t.font = None;
         t.family = match f.to_ascii_lowercase().as_str() {
             "helvetica" | "sans" | "arial" => FontFamily::Helvetica,
             "times" | "serif" => FontFamily::Times,
             "courier" | "mono" | "monospace" => FontFamily::Courier,
-            "anuphan" | "thai" => {
-                anuphan = true;
+            "sarabun" | "thai" => {
+                bundled = Some(Bundled::Sarabun);
                 t.family
             }
-            other => return Err(bad(format!("unknown font {other:?} (helvetica, times, courier, anuphan)"))),
+            "anuphan" => {
+                bundled = Some(Bundled::Anuphan);
+                t.family
+            }
+            other => return Err(bad(format!("unknown font {other:?} (helvetica, times, courier, sarabun, anuphan)"))),
         };
     }
     if let Some(b) = a.opt_bool("bold")? {
         t.bold = b;
     }
-    if anuphan {
-        // The bundled Thai face, embedded in the PDF; its bold is the SemiBold weight.
-        t.font = Some(pdfcraft_engine::EmbedFace::anuphan(t.bold));
-    }
     if let Some(i) = a.opt_bool("italic")? {
         t.italic = i;
+    }
+    // The bundled Thai faces, once Bold and Italic are known (Anuphan's bold is its SemiBold weight).
+    match bundled {
+        Some(Bundled::Sarabun) => t.font = Some(pdfcraft_engine::EmbedFace::sarabun(t.bold, t.italic)),
+        Some(Bundled::Anuphan) => t.font = Some(pdfcraft_engine::EmbedFace::anuphan(t.bold)),
+        None => {}
     }
     if let Some(c) = a.opt_str("color")? {
         t.color = parse_color(c)?;

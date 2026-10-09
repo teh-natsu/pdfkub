@@ -386,7 +386,7 @@ pub(crate) fn format_panel(ui: &mut egui::Ui, t: &Tokens, style: &AddedText) -> 
         s.color = picked;
     }
     ui.label(
-        egui::RichText::new(tl!("Thai and other scripts are drawn with an embedded font: the one you pick, or Anuphan.")).small().color(t.text_faint),
+        egui::RichText::new(tl!("Thai and other scripts are drawn with an embedded font: the one you pick, or Sarabun.")).small().color(t.text_faint),
     );
     (s != *style).then_some(s)
 }
@@ -396,8 +396,8 @@ fn font_label(s: &AddedText) -> String {
     s.font.as_ref().map_or_else(|| s.family.label().to_owned(), |f| f.name.clone())
 }
 
-/// The font list: the three standard fonts, Anuphan (bundled, with Thai), then the fonts
-/// installed on this computer that may be embedded, Thai ones first.
+/// The font list: the three standard fonts, Sarabun and Anuphan (bundled, with Thai), then the
+/// fonts installed on this computer that may be embedded, Thai ones first.
 fn font_menu(ui: &mut egui::Ui, t: &Tokens, s: &mut AddedText) {
     egui::ComboBox::from_id_salt("font-family").selected_text(font_label(s)).width(170.0).height(420.0).show_ui(ui, |ui| {
         for f in [FontFamily::Helvetica, FontFamily::Times, FontFamily::Courier] {
@@ -407,6 +407,10 @@ fn font_menu(ui: &mut egui::Ui, t: &Tokens, s: &mut AddedText) {
             }
         }
         ui.separator();
+        let sarabun = s.font.as_ref().is_some_and(|f| f.name.starts_with("Sarabun"));
+        if ui.selectable_label(sarabun, "Sarabun").on_hover_text(tl!("Embedded in the PDF; has Thai")).clicked() {
+            s.font = Some(pdfcraft_engine::EmbedFace::sarabun(s.bold, s.italic));
+        }
         let anuphan = s.font.as_ref().is_some_and(|f| f.name.starts_with("Anuphan"));
         if ui.selectable_label(anuphan, "Anuphan").on_hover_text(tl!("Embedded in the PDF; has Thai")).clicked() {
             s.font = Some(pdfcraft_engine::EmbedFace::anuphan(s.bold));
@@ -434,7 +438,9 @@ fn font_menu(ui: &mut egui::Ui, t: &Tokens, s: &mut AddedText) {
 /// After Bold or Italic changes, use the matching face of the chosen font's family.
 fn restyle(s: &mut AddedText) {
     let Some(font) = &s.font else { return };
-    if font.name.starts_with("Anuphan") {
+    if font.name.starts_with("Sarabun") {
+        s.font = Some(pdfcraft_engine::EmbedFace::sarabun(s.bold, s.italic));
+    } else if font.name.starts_with("Anuphan") {
         s.font = Some(pdfcraft_engine::EmbedFace::anuphan(s.bold));
     } else if let Some(face) = crate::font_list::family_of(&font.name).and_then(|fam| fam.face(s.bold, s.italic))
         && face.name != font.name

@@ -1770,13 +1770,15 @@ fn thai_text_added_through_tools_reads_back() {
     let lines = ["สวัสดีครับ ภาษาไทยที่นี่", "น้ำใจ ผู้ใหญ่ กี่ปี ปั่นจักรยาน"];
     ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": lines.join("\n"), "at": [20, 20], "width": 400, "size": 16 }));
     ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": "ตัวหนา", "at": [20, 120], "font": "anuphan", "bold": true }));
+    ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": "ราชการ", "at": [20, 160], "font": "sarabun", "bold": true, "italic": true }));
     let list = ok(&mut a, "content_list", json!({ "doc": doc }));
     assert_eq!(list["items"][1]["font"], "Anuphan Bold");
+    assert_eq!(list["items"][2]["font"], "Sarabun Bold Italic");
     ok(&mut a, "doc_save", json!({ "doc": doc, "path": "thai.pdf" }));
     let saved = ok(&mut a, "doc_open", json!({ "path": "thai.pdf" }))["doc"].as_u64().unwrap();
     for d in [doc, saved] {
         let text = page_text(&mut a, d)[0].clone();
-        for line in lines.iter().chain(&["ตัวหนา"]) {
+        for line in lines.iter().chain(&["ตัวหนา", "ราชการ"]) {
             assert!(text.contains(line), "{line:?} in {text:?}");
         }
     }

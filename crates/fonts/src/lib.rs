@@ -14,7 +14,10 @@ pub use craft::{
     CRAFT_FONTS, CraftFont, SHIPPORI_MINCHO, document_japanese_font, document_japanese_font_for_style, ui_arabic_fonts, ui_chinese_fonts,
     ui_cjk_fonts, ui_japanese_fonts, ui_telugu_fonts,
 };
-pub use embed::{ANUPHAN_MEDIUM, ANUPHAN_REGULAR, ANUPHAN_SEMIBOLD, EmbedError, EmbedFace, MAX_FONT_BYTES, PlacedGlyph, Shaped, embeddable};
+pub use embed::{
+    ANUPHAN_MEDIUM, ANUPHAN_REGULAR, ANUPHAN_SEMIBOLD, EmbedError, EmbedFace, MAX_FONT_BYTES, PlacedGlyph, SARABUN_BOLD, SARABUN_BOLD_ITALIC,
+    SARABUN_ITALIC, SARABUN_REGULAR, Shaped, embeddable,
+};
 pub use script::{GlyphError, GlyphOutline, MAX_SIGNATURE_CHARS, ScriptOutline, japanese_glyph, japanese_glyph_from, script_outline};
 
 /// Approximate advance of `s` in Helvetica (or Arial) at `size` points.

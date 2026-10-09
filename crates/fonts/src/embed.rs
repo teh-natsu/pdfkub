@@ -21,6 +21,12 @@ use skrifa::{FontRef, MetadataProvider, instance::Size, string::StringId};
 pub static ANUPHAN_REGULAR: &[u8] = include_bytes!("../../../assets/fonts/Anuphan-Regular.ttf");
 pub static ANUPHAN_MEDIUM: &[u8] = include_bytes!("../../../assets/fonts/Anuphan-Medium.ttf");
 pub static ANUPHAN_SEMIBOLD: &[u8] = include_bytes!("../../../assets/fonts/Anuphan-SemiBold.ttf");
+/// Sarabun (OFL-1.1, Cadson Demak): a formal Thai face in the style of TH Sarabun New, the
+/// default for added Thai text.
+pub static SARABUN_REGULAR: &[u8] = include_bytes!("../../../assets/fonts/Sarabun-Regular.ttf");
+pub static SARABUN_BOLD: &[u8] = include_bytes!("../../../assets/fonts/Sarabun-Bold.ttf");
+pub static SARABUN_ITALIC: &[u8] = include_bytes!("../../../assets/fonts/Sarabun-Italic.ttf");
+pub static SARABUN_BOLD_ITALIC: &[u8] = include_bytes!("../../../assets/fonts/Sarabun-BoldItalic.ttf");
 
 /// Larger font files are refused: a font is untrusted input, and the whole face is embedded.
 pub const MAX_FONT_BYTES: usize = 32 << 20;
@@ -85,6 +91,17 @@ impl EmbedFace {
     pub fn anuphan(bold: bool) -> EmbedFace {
         let data = if bold { ANUPHAN_SEMIBOLD } else { ANUPHAN_REGULAR };
         EmbedFace { name: if bold { "Anuphan Bold".into() } else { "Anuphan".into() }, data: Arc::new(data.to_vec()) }
+    }
+
+    /// The bundled Sarabun face in the requested style.
+    pub fn sarabun(bold: bool, italic: bool) -> EmbedFace {
+        let (data, name) = match (bold, italic) {
+            (false, false) => (SARABUN_REGULAR, "Sarabun"),
+            (true, false) => (SARABUN_BOLD, "Sarabun Bold"),
+            (false, true) => (SARABUN_ITALIC, "Sarabun Italic"),
+            (true, true) => (SARABUN_BOLD_ITALIC, "Sarabun Bold Italic"),
+        };
+        EmbedFace { name: name.into(), data: Arc::new(data.to_vec()) }
     }
 
     /// Face `index` of a font file (`.ttf`, or `.ttc` collection), checked for TrueType outlines
@@ -414,6 +431,11 @@ mod tests {
             assert!(face.covers("ภาษาไทย ที่นี่ Hello"));
         }
         assert!(FontRef::new(ANUPHAN_MEDIUM).is_ok());
+        for (bold, italic) in [(false, false), (true, false), (false, true), (true, true)] {
+            let face = EmbedFace::sarabun(bold, italic);
+            assert!(EmbedFace::from_bytes(&face.name, &face.data, 0).is_ok(), "{}", face.name);
+            assert!(face.covers("หนังสือราชการ ที่ ๑๒๓"), "{}", face.name);
+        }
     }
 
     #[test]

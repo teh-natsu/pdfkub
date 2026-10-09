@@ -229,12 +229,12 @@ fn added_text_and_images_are_page_content_that_stays_editable() {
 
 /// One page with Helvetica (WinAnsi) and a subset font that has only the glyphs it uses.
 #[test]
-fn thai_added_text_embeds_anuphan_and_stays_editable() {
+fn thai_added_text_embeds_sarabun_and_stays_editable() {
     let mut doc = fixture();
     let thai = AddedText {
         rect: [72.0, 600.0, 300.0, 700.0], text: "สวัสดีครับ ที่นี่".into(), size: 16.0, ..AddedText::default()
     };
-    assert_eq!(thai.face().map(|f| f.name), Some("Anuphan".into()), "Thai can't be drawn with Helvetica");
+    assert_eq!(thai.face().map(|f| f.name), Some("Sarabun".into()), "Thai can't be drawn with Helvetica");
     add_content(&mut doc, 0, &Content::Text(thai)).unwrap();
     let more = AddedText { rect: [72.0, 500.0, 300.0, 560.0], text: "ภาษาไทย".into(), ..AddedText::default() };
     add_content(&mut doc, 0, &Content::Text(more)).unwrap();

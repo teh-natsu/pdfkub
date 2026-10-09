@@ -96,17 +96,17 @@ pub struct AddedText {
     pub color: [f64; 3],
     pub align: Align,
     /// An embedded TrueType face (any script); `None` draws with the standard font `family`,
-    /// or with the bundled Anuphan when the text needs characters outside WinAnsi (Thai).
+    /// or with the bundled Sarabun when the text needs characters outside WinAnsi (Thai).
     pub font: Option<EmbedFace>,
 }
 
 impl AddedText {
-    /// The face the text is drawn with, if any: the chosen one, else Anuphan for text the
-    /// standard fonts can't show.
+    /// The face the text is drawn with, if any: the chosen one, else Sarabun (a formal Thai face)
+    /// for text the standard fonts can't show.
     pub fn face(&self) -> Option<EmbedFace> {
         match &self.font {
             Some(f) => Some(f.clone()),
-            None if !win_ansi_covers(&self.text) => Some(EmbedFace::anuphan(self.bold)),
+            None if !win_ansi_covers(&self.text) => Some(EmbedFace::sarabun(self.bold, self.italic)),
             None => None,
         }
     }
