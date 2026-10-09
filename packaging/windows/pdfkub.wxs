@@ -53,6 +53,12 @@
 <?ifdef ModelsDir?>
       <ComponentGroupRef Id="PdfkubModels" />
 <?endif?>
+      <!-- pdfkub-cli (scripting and the MCP server) is not installed by default: the app doesn't
+           need it and it is a second copy of the engine. Add it with
+           msiexec /i pdfkub-….msi ADDLOCAL=Main,Cli -->
+      <Feature Id="Cli" Title="Command-line tools" Level="1000">
+        <ComponentRef Id="PdfkubCli" />
+      </Feature>
     </Feature>
   </Package>
 
@@ -151,10 +157,9 @@
             Target="[#PdfkubExe]" WorkingDirectory="INSTALLFOLDER" Icon="PdfkubIcon.ico" IconIndex="0" />
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Shortcuts" Name="Desktop" Type="integer" Value="1" KeyPath="yes" />
       </Component>
-
-      <Component Id="PdfkubCli">
-        <File Id="PdfkubCliExe" Source="$(var.BinDir)\pdfkub-cli.exe" KeyPath="yes" />
-      </Component>
     </ComponentGroup>
+    <Component Id="PdfkubCli" Directory="INSTALLFOLDER">
+      <File Id="PdfkubCliExe" Source="$(var.BinDir)\pdfkub-cli.exe" KeyPath="yes" />
+    </Component>
   </Fragment>
 </Wix>

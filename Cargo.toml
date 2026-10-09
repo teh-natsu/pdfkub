@@ -82,8 +82,24 @@ opt-level = 2
 opt-level = 1
 
 [profile.release]
-lto = "thin"
+# Fat LTO: about 4% smaller binaries than thin, at the same speed (longer release builds).
+lto = "fat"
 codegen-units = 1
+
+# Optimised for size where speed doesn't show: document JavaScript (form scripts are small),
+# shader translation (once at startup) and TLS (update checks).
+[profile.release.package.boa_engine]
+opt-level = "s"
+[profile.release.package.boa_parser]
+opt-level = "s"
+[profile.release.package.boa_ast]
+opt-level = "s"
+[profile.release.package.regress]
+opt-level = "s"
+[profile.release.package.naga]
+opt-level = "s"
+[profile.release.package.rustls]
+opt-level = "s"
 
 # Vendored, patched third-party crates (see vendor/README.md). Each patch is meant to go upstream.
 [patch.crates-io]
