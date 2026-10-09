@@ -630,6 +630,74 @@ fn japanese_paragraph_uses_unicode_type3_fallback() {
     assert_eq!(text::text_blocks(&reopened, 0).unwrap()[0].text, replacement);
 }
 
+/// Every Type 3 fallback glyph starts with a well-formed `d1`: six operands, the second 0, and a
+/// box that encloses every point of the glyph. Acrobat shows a bullet for a glyph whose `d1`
+/// has the wrong operand count.
+#[test]
+fn type3_fallback_glyphs_declare_a_well_formed_d1() {
+    if without_craft_fonts("type3_fallback_glyphs_declare_a_well_formed_d1") {
+        return;
+    }
+    // Cyrillic is respaced (shifted by its side bearing), and its box must move with it.
+    let mut glyphs = Vec::new();
+    for replacement in ["見本商会 御中", "София 2027"] {
+        let mut doc = text_page("BT /F2 12 Tf 72 700 Td (ab) Tj ET");
+        text::replace_line(&mut doc, 0, 0, replacement).unwrap();
+        glyphs.extend(fallback_paths(&reopen(&doc)));
+    }
+    assert!(!glyphs.is_empty());
+    for glyph in glyphs {
+        let text = String::from_utf8(glyph).unwrap();
+        let mut lines = text.lines();
+        let d1: Vec<&str> = lines.next().unwrap().split_whitespace().collect();
+        assert_eq!(d1.len(), 7, "six operands and d1: {d1:?}");
+        assert_eq!(d1[6], "d1");
+        let n: Vec<f64> = d1[..6].iter().map(|v| v.parse().unwrap()).collect();
+        assert_eq!(n[1], 0.0, "wy");
+        assert!(n[2] <= n[4] && n[3] <= n[5], "box: {n:?}");
+        for line in lines.filter(|l| l.ends_with(" m") || l.ends_with(" l")) {
+            let p: Vec<f64> = line.split_whitespace().take(2).map(|v| v.parse().unwrap()).collect();
+            assert!(p[0] >= n[2] && p[0] <= n[4] && p[1] >= n[3] && p[1] <= n[5], "{line} outside {n:?}");
+        }
+    }
+}
+
+/// Shippori Mincho, the serif fallback, has no Cyrillic: Bulgarian replacement text in a serif
+/// line takes a fallback face that has every letter instead of failing on the first one.
+#[test]
+fn cyrillic_replacement_in_a_serif_line_uses_a_face_with_the_letters() {
+    if without_craft_fonts("cyrillic_replacement_in_a_serif_line_uses_a_face_with_the_letters") {
+        return;
+    }
+    let replacement = "София 2027";
+    for paragraph in [false, true] {
+        let mut doc = styled_text_page("ABCDEF+Garamond");
+        if paragraph {
+            text::replace_block(&mut doc, 0, 0, replacement).unwrap();
+        } else {
+            text::replace_line(&mut doc, 0, 0, replacement).unwrap();
+        }
+        let lines = text::text_lines(&reopen(&doc), 0).unwrap();
+        assert_eq!(lines[0].text, replacement);
+        // Letters are spaced by their shape, not one em each (the faces' full-width Cyrillic).
+        let widths = fallback_widths(&doc);
+        assert!(widths.iter().all(|w| *w > 300.0 && *w < 900.0), "{widths:?}");
+        assert!(widths.windows(2).any(|w| w[0] != w[1]), "proportional: {widths:?}");
+    }
+}
+
+/// The `/Widths` of the page's Type 3 fallback font, for its Cyrillic letters.
+fn fallback_widths(doc: &Document) -> Vec<f64> {
+    let p = pdfcraft_model::pages(doc).swap_remove(0);
+    let res = doc.resolve(p.dict.get(b"Resources").unwrap());
+    let fonts = doc.resolve(res.as_dict().unwrap().get(b"Font").unwrap());
+    let font = doc.resolve(fonts.as_dict().unwrap().get(b"PCJp").unwrap());
+    let font = font.as_dict().unwrap();
+    let widths = doc.resolve(font.get(b"Widths").unwrap()).as_array().unwrap().iter().filter_map(|w| w.as_f64()).collect::<Vec<_>>();
+    // "София 2027": the first five codes are the letters.
+    widths[..5].to_vec()
+}
+
 #[test]
 fn japanese_paragraph_keeps_ideographic_spaces() {
     if without_craft_fonts("japanese_paragraph_keeps_ideographic_spaces") {

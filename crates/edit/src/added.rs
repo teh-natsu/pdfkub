@@ -243,7 +243,7 @@ fn wrapped(t: &AddedText) -> Vec<(String, bool)> {
     // Text drawn with an embedded face (Thai, or a font picked from the list) wraps by the face's
     // shaped widths, left to right.
     if let Some(face) = t.face() {
-        return pdfcraft_fonts::wrap_with(&t.text, |s| t.width_of(Some(&face), s) <= width).into_iter().map(|l| (l, false)).collect();
+        return pdfcraft_fonts::wrap_fitting(&t.text, |s| t.width_of(Some(&face), s) <= width).into_iter().map(|l| (l, false)).collect();
     }
     let mut out = Vec::new();
     for para in t.text.split('\n') {

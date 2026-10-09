@@ -1074,7 +1074,7 @@ pub(crate) fn composer(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
             ui.set_width(260.0);
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new(&prefs.author).font(theme::semibold(13.0)));
-                ui.label(egui::RichText::new(title).font(theme::regular(11.5)).color(t.text_faint));
+                ui.label(egui::RichText::new(tl!(title)).font(theme::regular(11.5)).color(t.text_faint));
             });
             ui.add_space(6.0);
             let hint = match c.kind {
@@ -1175,7 +1175,7 @@ pub fn text_box_rect(at: [f64; 2], text: &str, size: f64) -> [f64; 4] {
         let face = pdfcraft_fonts::EmbedFace::sarabun(false, false);
         let longest = text.lines().map(|l| face.shape(l).width(size)).fold(0.0, f64::max);
         let w = (longest + 2.0 * pad + 4.0).clamp(40.0, 300.0);
-        let lines = pdfcraft_fonts::wrap_with(text, |s| face.shape(s).width(size) <= w - 2.0 * pad).len().max(1);
+        let lines = pdfcraft_fonts::wrap_fitting(text, |s| face.shape(s).width(size) <= w - 2.0 * pad).len().max(1);
         let (_, step) = face.line_metrics();
         let h = lines as f64 * size * step + 2.0 * pad + 2.0;
         return [at[0], at[1] - h, at[0] + w, at[1]];

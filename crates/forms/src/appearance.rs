@@ -5,12 +5,14 @@
 //! marked-content block as viewers expect. Supported: single-line, multiline (wrapped), comb,
 //! password, quadding, auto font size (`0 Tf`), combo boxes and list boxes (selection shown).
 //!
-//! The `/DA` font is used when the form's `/DR` defines it as a simple font; text is encoded in
-//! WinAnsi. Otherwise (composite fonts, missing resources) Helvetica is used, so text is always
-//! visible. Widths use the approximate Helvetica metrics of `pdfcraft-fonts`.
+//! The `/DA` font is used when the form's `/DR` defines it as a simple font (text encoded in
+//! WinAnsi) or as a composite font with a predefined Unicode CMap such as `UniJIS-UTF16-H`, as
+//! Japanese forms use (text encoded in that CMap). Otherwise (other composite fonts, missing
+//! resources) Helvetica is used, so text is always visible. Widths use the approximate metrics
+//! of `pdfcraft-fonts` (Helvetica, or one em per full-width character in composite fonts).
 
 use pdfcraft_cos::{Dict, Document, Object, Stream};
-use pdfcraft_fonts::{EmbedFace, helvetica_width, literal, win_ansi, win_ansi_covers, wrap, wrap_with};
+use pdfcraft_fonts::{EmbedFace, UnicodeCMap, cjk_width, helvetica_width, literal, win_ansi, win_ansi_covers, wrap_fitting, wrap_with};
 
 use crate::{Field, FieldKind, Widget, acroform, flags};
 
@@ -53,8 +55,32 @@ pub fn parse_da(da: &str) -> Da {
     out
 }
 
-/// The font resource for `name` from the form's `/DR`, if it is a simple font we can encode for.
-fn dr_font(doc: &Document, name: &str) -> Option<Object> {
+/// How a field font's text is encoded and measured.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum FontText {
+    WinAnsi,
+    /// A composite font with a predefined Unicode CMap.
+    Unicode(UnicodeCMap),
+}
+
+impl FontText {
+    fn encode(self, s: &str) -> Vec<u8> {
+        match self {
+            Self::WinAnsi => win_ansi(s),
+            Self::Unicode(cmap) => cmap.encode(s),
+        }
+    }
+
+    fn width(self, s: &str, size: f64) -> f64 {
+        match self {
+            Self::WinAnsi => helvetica_width(s, size),
+            Self::Unicode(_) => cjk_width(s, size),
+        }
+    }
+}
+
+/// The font resource for `name` from the form's `/DR`, if it is a font we can encode for.
+fn dr_font(doc: &Document, name: &str) -> Option<(Object, FontText)> {
     let af = acroform(doc)?;
     let dr = doc.resolve(af.get(b"DR")?);
     let fonts = doc.resolve(dr.as_dict()?.get(b"Font")?);
@@ -63,13 +89,17 @@ fn dr_font(doc: &Document, name: &str) -> Option<Object> {
     let fd = font.as_dict()?;
     match fd.name(b"Subtype") {
         Some(b"Type1" | b"TrueType" | b"MMType1") => {}
+        // Japanese, Chinese and Korean forms: a CID font addressed by Unicode (a non-embedded
+        // `/HeiseiMin-W3` with `/UniJIS-UCS2-H`, say). Embedded CMap streams and Identity-H need
+        // the font's own mapping, so those still fall back to Helvetica.
+        Some(b"Type0") => return Some((entry, FontText::Unicode(UnicodeCMap::from_name(fd.name(b"Encoding")?)?))),
         _ => return None,
     }
     // Symbolic fonts (ZapfDingbats, Symbol) can't show WinAnsi text.
     if matches!(fd.name(b"BaseFont"), Some(b"ZapfDingbats" | b"Symbol")) {
         return None;
     }
-    Some(entry)
+    Some((entry, FontText::WinAnsi))
 }
 
 fn helvetica() -> Object {
@@ -195,24 +225,32 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
     let wd = wobj.as_dict().cloned().unwrap_or_default();
     let (width, height) = ((w.rect[2] - w.rect[0]).max(1.0), (w.rect[3] - w.rect[1]).max(1.0));
     let da = parse_da(wd.get(b"DA").and_then(|o| doc.resolve(o).as_string().map(|s| s.to_text())).as_deref().unwrap_or(&f.da));
-    let thai = values.iter().chain(f.options.iter().map(|(_, d)| d)).any(|s| !win_ansi_covers(s));
-    let embedded = if thai {
-        let face = EmbedFace::sarabun(false, false);
-        pdfcraft_fonts::embedded_font(doc, &face).ok().map(|r| (face, r))
-    } else {
-        None
+    // The field's own font when it can show the text: a WinAnsi font for Latin text, a Unicode
+    // CID font for Chinese, Japanese or Korean. Text it can't show (Thai, or anything outside
+    // WinAnsi with a simple font) is drawn with Sarabun embedded in `doc`.
+    let dr = dr_font(doc, &da.font);
+    let thai = |s: &str| s.chars().any(|c| ('\u{0E00}'..='\u{0EFF}').contains(&c));
+    let field_shows = |s: &str| match &dr {
+        Some((_, FontText::Unicode(_))) => !thai(s),
+        _ => win_ansi_covers(s),
     };
+    // Only when Sarabun can draw it: Japanese in a field whose font can't be addressed by Unicode
+    // keeps Helvetica's question marks rather than empty boxes.
+    let sarabun = EmbedFace::sarabun(false, false);
+    let needs_face = values.iter().chain(f.options.iter().map(|(_, d)| d)).any(|s| !field_shows(s) && sarabun.covers(s));
+    let embedded = if needs_face { pdfcraft_fonts::embedded_font(doc, &sarabun).ok().map(|r| (sarabun, r)) } else { None };
     let face = embedded.as_ref().map(|(f, _)| f.clone());
-    let (font_name, font_obj) = match (&embedded, dr_font(doc, &da.font)) {
-        (Some((_, r)), _) => (format!("PCE{}", r.num), Object::Ref(*r)),
-        (None, Some(o)) => (da.font.clone(), o),
-        (None, None) => ("Helv".to_string(), helvetica()),
+    let (font_name, font_obj, enc) = match (&embedded, dr) {
+        (Some((_, r)), _) => (format!("PCE{}", r.num), Object::Ref(*r), FontText::WinAnsi),
+        (None, Some((o, enc))) => (da.font.clone(), o, enc),
+        (None, None) => ("Helv".to_string(), helvetica(), FontText::WinAnsi),
     };
-    let measure = |s: &str, size: f64| face.as_ref().map_or_else(|| helvetica_width(s, size), |fc| fc.shape(s).width(size));
+    let width_of = |text: &str, size: f64| face.as_ref().map_or_else(|| enc.width(text, size), |fc| fc.shape(text).width(size));
     let wrap_lines = |s: &str, size: f64, width: f64| match &face {
-        Some(fc) => wrap_with(s, |line| fc.shape(line).width(size) <= width),
-        None => wrap(s, size, width),
+        Some(fc) => wrap_fitting(s, |line| fc.shape(line).width(size) <= width),
+        None => wrap_with(s, size, width, width_of),
     };
+    let width_of = |text: &str, size: f64| enc.width(text, size);
     let (mut c, bw) = frame(doc, &wd, width, height);
     let pad = 2.0 + bw;
     let inner_w = (width - 2.0 * pad).max(1.0);
@@ -221,7 +259,7 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
     let mut placed: Vec<(f64, f64, String)> = Vec::new();
     let show = |placed: &mut Vec<(f64, f64, String)>, x: f64, y: f64, text: &str| placed.push((x, y, text.to_owned()));
     let x_for = |text: &str, size: f64| -> f64 {
-        let tw = measure(text, size);
+        let tw = width_of(text, size);
         match q {
             1 => pad + (inner_w - tw) / 2.0,
             2 => width - pad - tw,
@@ -276,7 +314,7 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
             } else {
                 if size == 0.0 {
                     size = ((height - 2.0 * pad) / 1.15).clamp(4.0, 12.0);
-                    let tw = measure(&text, size);
+                    let tw = width_of(&text, size);
                     if tw > inner_w && !comb {
                         size = (size * inner_w / tw).max(4.0);
                     }
@@ -288,7 +326,7 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
                     let cell = width / cells as f64;
                     for (i, ch) in text.chars().take(cells).enumerate() {
                         let s = ch.to_string();
-                        show(&mut placed, cell * i as f64 + (cell - measure(&s, size)) / 2.0, y, &s);
+                        show(&mut placed, cell * i as f64 + (cell - width_of(&s, size)) / 2.0, y, &s);
                     }
                 } else {
                     show(&mut placed, x_for(&text, size), y, &text);
@@ -312,7 +350,7 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
             }
             None => {
                 body.extend(format!("1 0 0 1 {} {} Tm ", n(*x), n(*y)).bytes());
-                body.extend(literal(&win_ansi(text)));
+                body.extend(literal(&enc.encode(text)));
                 body.extend_from_slice(b" Tj\n");
             }
         }
@@ -364,7 +402,7 @@ pub fn check_box_states(doc: &mut Document, w: &Widget, kind: FieldKind, on_name
     let s = width.min(height);
     let mark = check_mark(style, width / 2.0, height / 2.0, s);
     let mut nd = Dict::new();
-    nd.set(on_name.as_bytes().to_vec(), form(format!("{frame_c}{mark}")));
+    nd.set(crate::name_bytes(on_name), form(format!("{frame_c}{mark}")));
     nd.set(b"Off".to_vec(), form(frame_c));
     let mut ap = Dict::new();
     ap.set(b"N".to_vec(), Object::Dict(nd));

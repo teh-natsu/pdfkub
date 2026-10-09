@@ -690,7 +690,7 @@ pub fn build_embedded(doc: &mut pdfcraft_cos::Document, d: &Dict) -> Option<Stre
     let (first, step) = face.line_metrics();
     out.extend(format!("BT\n/{name} {} Tf\n{}", n(size), rg(text_color)).bytes());
     let mut y = rect[3] - pad - size * first;
-    for line in pdfcraft_fonts::wrap_with(&text, |s| face.shape(s).width(size) <= width) {
+    for line in pdfcraft_fonts::wrap_fitting(&text, |s| face.shape(s).width(size) <= width) {
         if y < rect[1] - size {
             break;
         }

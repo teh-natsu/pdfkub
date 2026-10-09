@@ -140,7 +140,7 @@ pub fn install_fonts_for(ctx: &egui::Context, prefer_hans: bool) {
 
 /// The name of the installed face [`installed_font_definitions`] may add after the embedded ones.
 pub const SYSTEM_FALLBACK: &str = "system-fallback";
-/// The installed CJK face added after [`SYSTEM_FALLBACK`] (PdfKub: builds without craft-fonts).
+/// The installed CJK face added before [`SYSTEM_FALLBACK`] (PdfKub: builds without craft-fonts).
 pub const SYSTEM_FALLBACK_CJK: &str = "system-fallback-cjk";
 
 /// What [`install_fonts_for`] installs: [`font_definitions_for`], then, on desktop, one face
@@ -150,19 +150,20 @@ pub const SYSTEM_FALLBACK_CJK: &str = "system-fallback-cjk";
 pub fn installed_font_definitions(prefer_hans: bool) -> FontDefinitions {
     #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
     let mut fonts = font_definitions_for(prefer_hans);
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Some(data) = crate::system_fonts::fallback() {
-        fonts.font_data.insert(SYSTEM_FALLBACK.to_owned(), data);
-        for stack in fonts.families.values_mut() {
-            stack.push(SYSTEM_FALLBACK.to_owned());
-        }
-    }
-    // Chinese and Japanese (language names, file names) when no embedded face has them.
+    // Chinese and Japanese (language names, file names) when no embedded face has them; before
+    // the Arabic fallback, which stays last (the two share no letters).
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(data) = crate::system_fonts::cjk_fallback() {
         fonts.font_data.insert(SYSTEM_FALLBACK_CJK.to_owned(), data);
         for stack in fonts.families.values_mut() {
             stack.push(SYSTEM_FALLBACK_CJK.to_owned());
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(data) = crate::system_fonts::fallback() {
+        fonts.font_data.insert(SYSTEM_FALLBACK.to_owned(), data);
+        for stack in fonts.families.values_mut() {
+            stack.push(SYSTEM_FALLBACK.to_owned());
         }
     }
     fonts

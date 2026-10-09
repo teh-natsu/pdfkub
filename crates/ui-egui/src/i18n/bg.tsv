@@ -2051,3 +2051,6 @@ action wizard	Start	Старт
 	Split right	Раздели надясно
 	Close split view	Затвори разделения изглед
 	Move to the other side	Премести от другата страна
+	Clear Recent Files	Изчисти последно отваряните файлове
+	Remove from Recent	Премахни от последно отваряните
+	Remove {name} from Recent	Премахни {name} от последно отваряните

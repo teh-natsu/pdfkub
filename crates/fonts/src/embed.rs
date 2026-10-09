@@ -422,7 +422,7 @@ pub fn is_mark(c: char) -> bool {
 /// Break `text` into lines that `fits`: at newlines and spaces, and inside a word that is wider
 /// than a line (Thai is written without spaces between words) between characters, never before
 /// a combining mark.
-pub fn wrap_with(text: &str, fits: impl Fn(&str) -> bool) -> Vec<String> {
+pub fn wrap_fitting(text: &str, fits: impl Fn(&str) -> bool) -> Vec<String> {
     let mut out = Vec::new();
     for para in text.split('\n') {
         let mut line = String::new();
@@ -644,7 +644,7 @@ mod tests {
         let face = EmbedFace::sarabun(false, false);
         let text = "บันทึกข้อความส่วนราชการสำนักงานโยธาธิการและผังเมืองจังหวัดเรื่องขออนุมัติโครงการก่อสร้างถนน".repeat(3);
         let fits = |s: &str| face.shape(s).width(16.0) <= 200.0;
-        let lines = wrap_with(&text, fits);
+        let lines = wrap_fitting(&text, fits);
         assert!(lines.len() > 3, "{lines:?}");
         assert_eq!(lines.concat(), text);
         for l in &lines {
