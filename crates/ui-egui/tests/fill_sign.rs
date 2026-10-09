@@ -17,9 +17,53 @@ fn harness() -> Harness<'static, PdfKubApp> {
     harness_bytes(FIXTURE)
 }
 
+/// The tests here render on wgpu's preferred software adapter, which on Windows is D3D12 WARP;
+/// several WARP devices at once (parallel test threads) crash the process with an access
+/// violation. A harness takes this lock when it first renders and keeps it until it is dropped.
+static GPU: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+thread_local! {
+    /// This thread holds [`GPU`] (a test with a second harness must not wait on itself).
+    static HOLDING_GPU: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// kittest's default renderer, one device at a time across test threads ([`GPU`]).
+struct OneDeviceAtATime {
+    // Declared before `held`: the device is gone before the lock is released.
+    inner: egui_kittest::LazyRenderer,
+    held: Option<std::sync::MutexGuard<'static, ()>>,
+}
+
+impl egui_kittest::TestRenderer for OneDeviceAtATime {
+    fn setup_eframe(&self, cc: &mut eframe::CreationContext<'_>, frame: &mut eframe::Frame) {
+        self.inner.setup_eframe(cc, frame);
+    }
+
+    fn handle_delta(&mut self, delta: &mut egui::TexturesDelta) {
+        self.inner.handle_delta(delta);
+    }
+
+    fn render(&mut self, ctx: &egui::Context, output: &egui::FullOutput) -> Result<image::RgbaImage, String> {
+        if self.held.is_none() && !HOLDING_GPU.get() {
+            self.held = Some(GPU.lock().unwrap_or_else(std::sync::PoisonError::into_inner));
+            HOLDING_GPU.set(true);
+        }
+        self.inner.render(ctx, output)
+    }
+}
+
+impl Drop for OneDeviceAtATime {
+    fn drop(&mut self) {
+        if self.held.is_some() {
+            HOLDING_GPU.set(false);
+        }
+    }
+}
+
 fn harness_bytes(fixture: &[u8]) -> Harness<'static, PdfKubApp> {
     let fixture = fixture.to_vec();
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
+    let renderer = OneDeviceAtATime { inner: egui_kittest::LazyRenderer::default(), held: None };
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).renderer(renderer).build_eframe(move |_cc| {
         let mut app = PdfKubApp::new();
         app.open_bytes("form.pdf", None, fixture.clone()).unwrap();
         app.set_option("left", "closed").unwrap();
