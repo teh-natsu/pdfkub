@@ -1558,16 +1558,19 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
                 // searching the recognised text gives the right characters.
                 let face = pdfcraft_fonts::EmbedFace::sarabun(false, false);
                 let font = pdfcraft_fonts::embedded_font(doc, &face).map_err(|e| EditError::Invalid(e.to_string()))?;
-                let mut encoded = Vec::with_capacity(words.len());
-                for w in words {
-                    encoded.push(if pdfcraft_fonts::win_ansi_covers(&w.text) {
-                        None
-                    } else {
-                        let shaped = face.shape(&w.text);
-                        let codes = face.codes(doc, font, &w.text, &shaped).map_err(|e| EditError::Invalid(e.to_string()))?;
-                        Some(pdfcraft_ocr::EncodedWord { codes, width: shaped.advance / shaped.units_per_em })
-                    });
-                }
+                // Every word of the page in one pass, so the font's maps are rewritten once.
+                let shaped: Vec<Option<pdfcraft_fonts::Shaped>> =
+                    words.iter().map(|w| (!pdfcraft_fonts::win_ansi_covers(&w.text)).then(|| face.shape(&w.text))).collect();
+                let runs: Vec<(&str, &pdfcraft_fonts::Shaped)> =
+                    words.iter().zip(&shaped).filter_map(|(w, s)| Some((w.text.as_str(), s.as_ref()?))).collect();
+                let mut codes = face.codes_for(doc, font, &runs).map_err(|e| EditError::Invalid(e.to_string()))?.into_iter();
+                let encoded: Vec<Option<pdfcraft_ocr::EncodedWord>> = shaped
+                    .iter()
+                    .map(|s| {
+                        let s = s.as_ref()?;
+                        Some(pdfcraft_ocr::EncodedWord { codes: codes.next()?, width: s.advance / s.units_per_em })
+                    })
+                    .collect();
                 let name = format!("PCE{}", font.num);
                 pdfcraft_edit::stamp(doc, *page, "OCR", pdfcraft_ocr::text_layer_with(words, &name, &encoded))?;
                 pdfcraft_edit::add_font(doc, *page, &name, font)?;

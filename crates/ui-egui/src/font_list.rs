@@ -60,6 +60,20 @@ pub fn installed() -> &'static [SystemFamily] {
     LIST.get_or_init(scan)
 }
 
+/// Start reading [`installed`] on a background thread, so the font list is ready when it's first
+/// opened (a cold scan of a few hundred font files takes a noticeable moment).
+pub fn prefetch() {
+    static STARTED: std::sync::Once = std::sync::Once::new();
+    STARTED.call_once(|| {
+        let spawned = std::thread::Builder::new().name("font-list".into()).spawn(|| {
+            installed();
+        });
+        if let Err(e) = spawned {
+            log::warn!("font list: {e}");
+        }
+    });
+}
+
 /// The family a face of [`installed`] belongs to, found by the face's name.
 pub fn family_of(face_name: &str) -> Option<&'static SystemFamily> {
     installed().iter().find(|f| f.faces.iter().any(|s| s.name == face_name))

@@ -511,10 +511,10 @@ fn write(doc: &mut Document, page: usize, c: &Content, obj: Option<ObjRef>) -> R
                     Some(r) => r,
                     None => pdfcraft_fonts::embedded_font(doc, &face).map_err(|e| EditError::Invalid(e.to_string()))?,
                 };
-                let mut codes = Vec::new();
-                for line in lines(t) {
-                    codes.push(face.codes(doc, font, &line, &face.shape(&line)).map_err(|e| EditError::Invalid(e.to_string()))?);
-                }
+                let lines = lines(t);
+                let shaped: Vec<_> = lines.iter().map(|l| face.shape(l)).collect();
+                let runs: Vec<_> = lines.iter().map(String::as_str).zip(&shaped).collect();
+                let codes = face.codes_for(doc, font, &runs).map_err(|e| EditError::Invalid(e.to_string()))?;
                 Some(EmbeddedText { font, codes })
             }
             None => None,

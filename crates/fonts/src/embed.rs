@@ -244,12 +244,19 @@ impl EmbedFace {
         t0.set(b"ToUnicode".to_vec(), Object::Ref(to_unicode));
         t0.set(b"PCGlyphCount".to_vec(), Object::Int(i64::from(count)));
         t0.set(b"PCGlyphMap".to_vec(), Object::Array(Vec::new()));
+        t0.set(b"PCFaceHash".to_vec(), Object::String(PdfString::literal(self.fingerprint().into_bytes())));
         Ok(doc.add(Object::Dict(t0)))
     }
 
     /// The character codes (2-byte CIDs) that draw `shaped`, the shaped form of `text`, with
     /// `font` (written by [`EmbedFace::write`]). New cluster CIDs are added to the font.
     pub fn codes(&self, doc: &mut Document, font: ObjRef, text: &str, shaped: &Shaped) -> Result<Vec<u16>, EmbedError> {
+        Ok(self.codes_for(doc, font, &[(text, shaped)])?.pop().unwrap_or_default())
+    }
+
+    /// [`EmbedFace::codes`] for several runs at once (the lines of an item, the words of an OCR
+    /// page): the font's maps are rewritten once, not once per run.
+    pub fn codes_for(&self, doc: &mut Document, font: ObjRef, runs: &[(&str, &Shaped)]) -> Result<Vec<Vec<u16>>, EmbedError> {
         let face = self.font().ok_or(EmbedError::Unreadable)?;
         let t0 = doc.get(font).as_dict().cloned().ok_or(EmbedError::Unreadable)?;
         let count = t0.get(b"PCGlyphCount").and_then(Object::as_f64).ok_or(EmbedError::Unreadable)? as u32;
@@ -264,38 +271,53 @@ impl EmbedFace {
             })
             .collect();
         let known = extra.len();
+        // Where each (glyph, cluster text) entry is; the first of any duplicates wins.
+        let mut index: std::collections::HashMap<(u16, String), usize> = std::collections::HashMap::with_capacity(extra.len());
+        for (i, e) in extra.iter().enumerate() {
+            index.entry(e.clone()).or_insert(i);
+        }
         let plain = glyph_text(&face);
-        // Cluster boundaries: each cluster runs to the next cluster's start.
-        let mut starts: Vec<usize> = shaped.glyphs.iter().map(|g| g.cluster).collect();
-        starts.sort_unstable();
-        starts.dedup();
-        let cluster_text = |c: usize| {
-            let end = starts.iter().find(|&&s| s > c).copied().unwrap_or(text.len());
-            text.get(c..end).unwrap_or_default().to_owned()
-        };
-        let mut codes = Vec::with_capacity(shaped.glyphs.len());
-        for (i, g) in shaped.glyphs.iter().enumerate() {
-            let alone = shaped.glyphs.iter().filter(|o| o.cluster == g.cluster).count() == 1;
-            let first = shaped.glyphs[..i].iter().all(|o| o.cluster != g.cluster);
-            let whole = cluster_text(g.cluster);
-            if alone && plain.get(&g.gid).is_some_and(|t| *t == whole) {
-                codes.push(g.gid);
-                continue;
+        let mut out = Vec::with_capacity(runs.len());
+        for (text, shaped) in runs {
+            // Cluster boundaries: each cluster runs to the next cluster's start.
+            let mut starts: Vec<usize> = shaped.glyphs.iter().map(|g| g.cluster).collect();
+            starts.sort_unstable();
+            starts.dedup();
+            let mut glyphs_in = std::collections::HashMap::<usize, usize>::new();
+            for g in &shaped.glyphs {
+                *glyphs_in.entry(g.cluster).or_default() += 1;
             }
-            let entry = (g.gid, if first { whole } else { String::new() });
-            let at = match extra.iter().position(|e| *e == entry) {
-                Some(at) => at,
-                None => {
-                    extra.push(entry);
-                    extra.len() - 1
-                }
+            let cluster_text = |c: usize| {
+                let end = starts.get(starts.partition_point(|&s| s <= c)).copied().unwrap_or(text.len());
+                text.get(c..end).unwrap_or_default().to_owned()
             };
-            codes.push(u16::try_from(count as usize + at).map_err(|_| EmbedError::TooManyCodes)?);
+            let mut seen = std::collections::HashSet::new();
+            let mut codes = Vec::with_capacity(shaped.glyphs.len());
+            for g in &shaped.glyphs {
+                let alone = glyphs_in.get(&g.cluster) == Some(&1);
+                let first = seen.insert(g.cluster);
+                let whole = if first || alone { cluster_text(g.cluster) } else { String::new() };
+                if alone && plain.get(&g.gid).is_some_and(|t| *t == whole) {
+                    codes.push(g.gid);
+                    continue;
+                }
+                let entry = (g.gid, if first { whole } else { String::new() });
+                let at = match index.get(&entry) {
+                    Some(&at) => at,
+                    None => {
+                        extra.push(entry.clone());
+                        index.insert(entry, extra.len() - 1);
+                        extra.len() - 1
+                    }
+                };
+                codes.push(u16::try_from(count as usize + at).map_err(|_| EmbedError::TooManyCodes)?);
+            }
+            out.push(codes);
         }
         if extra.len() > known {
             self.rewrite_maps(doc, font, &t0, count, &extra)?;
         }
-        Ok(codes)
+        Ok(out)
     }
 
     /// Rewrite the CID-to-glyph map, the widths and the ToUnicode map after CIDs were added.
@@ -335,6 +357,13 @@ impl EmbedFace {
         Ok(())
     }
 
+    /// A fingerprint of the face's bytes (FNV-1a, 64 bits, in hex), kept in the Type0 font as
+    /// `/PCFaceHash` so the face can be found again without decompressing the embedded file.
+    fn fingerprint(&self) -> String {
+        let hash = self.data.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3));
+        format!("{hash:016x}-{}", self.data.len())
+    }
+
     /// The face embedded in a Type0 font that [`EmbedFace::write`] made, read back from `doc`.
     pub fn read(doc: &Document, font: ObjRef, name: &str) -> Option<EmbedFace> {
         let t0 = doc.get(font);
@@ -356,13 +385,22 @@ pub fn embedded_font(doc: &mut Document, face: &EmbedFace) -> Result<ObjRef, Emb
     let root = doc.root().ok_or(EmbedError::Unreadable)?;
     let catalog = doc.get(root).as_dict().cloned().ok_or(EmbedError::Unreadable)?;
     let mut listed: Vec<Object> = catalog.get(b"PCFonts").map(|l| doc.resolve(l)).and_then(|l| l.as_array().cloned()).unwrap_or_default();
+    let mut fingerprint = None;
     for pair in listed.chunks(2) {
         let (Some(name), Some(r)) =
             (pair.first().and_then(|n| doc.resolve(n).as_string().map(|s| s.to_text())), pair.get(1).and_then(Object::as_ref))
         else {
             continue;
         };
-        if name == face.name && EmbedFace::read(doc, r, &name).is_some_and(|f| f.data == face.data) {
+        if name != face.name {
+            continue;
+        }
+        // Fonts this app wrote carry the face's fingerprint; older ones are compared in full.
+        let same = match doc.get(r).as_dict().and_then(|d| d.get(b"PCFaceHash").and_then(|h| doc.resolve(h).as_string().map(|s| s.to_text()))) {
+            Some(hash) => hash == *fingerprint.get_or_insert_with(|| face.fingerprint()),
+            None => EmbedFace::read(doc, r, &name).is_some_and(|f| f.data == face.data),
+        };
+        if same {
             return Ok(r);
         }
     }
@@ -397,17 +435,24 @@ pub fn wrap_with(text: &str, fits: impl Fn(&str) -> bool) -> Vec<String> {
             if !line.is_empty() {
                 out.push(std::mem::take(&mut line));
             }
-            let mut piece = String::new();
-            for c in word.chars() {
-                let mut next = piece.clone();
-                next.push(c);
-                if !piece.is_empty() && !is_mark(c) && !fits(&next) {
-                    out.push(std::mem::take(&mut piece));
-                    next = c.to_string();
+            // A word wider than the line: the longest piece that fits, found by bisecting the
+            // places it may break (before any character but a mark); at least one character.
+            let mut start = 0;
+            while let Some(rest) = word.get(start..).filter(|r| !r.is_empty()) {
+                if fits(rest) {
+                    line = rest.to_owned();
+                    break;
                 }
-                piece = next;
+                let breaks: Vec<usize> = rest.char_indices().skip(1).filter(|(_, c)| !is_mark(*c)).map(|(i, _)| start + i).collect();
+                let Some(&first) = breaks.first() else {
+                    line = rest.to_owned();
+                    break;
+                };
+                let fitting = breaks.partition_point(|&b| word.get(start..b).is_some_and(&fits));
+                let end = fitting.checked_sub(1).and_then(|k| breaks.get(k)).copied().unwrap_or(first);
+                out.push(word.get(start..end).unwrap_or_default().to_owned());
+                start = end;
             }
-            line = piece;
         }
         out.push(line);
     }
@@ -564,6 +609,53 @@ mod tests {
         assert_eq!(a, b);
         let bold = embedded_font(&mut doc, &EmbedFace::sarabun(true, false)).unwrap();
         assert_ne!(a, bold);
+    }
+
+    #[test]
+    fn fonts_written_before_fingerprints_are_still_found() {
+        let mut doc = Document::new_empty();
+        let face = EmbedFace::sarabun(false, false);
+        let a = embedded_font(&mut doc, &face).unwrap();
+        let mut t0 = doc.get(a).as_dict().cloned().unwrap();
+        assert!(t0.get(b"PCFaceHash").is_some());
+        t0.remove(b"PCFaceHash");
+        doc.set(a, Object::Dict(t0));
+        assert_eq!(embedded_font(&mut doc, &face).unwrap(), a);
+    }
+
+    #[test]
+    fn codes_for_many_runs_match_one_run_at_a_time() {
+        let face = EmbedFace::sarabun(false, false);
+        let runs = ["เรื่อง ขออนุมัติ", "ที่ ๑๒๓", "ก่อสร้างถนน กี่", "Hello", "เรื่อง ขออนุมัติ"];
+        let shaped: Vec<Shaped> = runs.iter().map(|r| face.shape(r)).collect();
+        let mut one = Document::new_empty();
+        let f1 = embedded_font(&mut one, &face).unwrap();
+        let singly: Vec<Vec<u16>> = runs.iter().zip(&shaped).map(|(r, s)| face.codes(&mut one, f1, r, s).unwrap()).collect();
+        let mut many = Document::new_empty();
+        let f2 = embedded_font(&mut many, &face).unwrap();
+        let pairs: Vec<(&str, &Shaped)> = runs.iter().copied().zip(&shaped).collect();
+        assert_eq!(face.codes_for(&mut many, f2, &pairs).unwrap(), singly);
+        let map = |d: &Document, f: ObjRef| d.get(f).as_dict().and_then(|t| t.get(b"PCGlyphMap").cloned());
+        assert_eq!(map(&one, f1), map(&many, f2));
+    }
+
+    #[test]
+    fn long_thai_words_break_where_they_fit() {
+        let face = EmbedFace::sarabun(false, false);
+        let text = "บันทึกข้อความส่วนราชการสำนักงานโยธาธิการและผังเมืองจังหวัดเรื่องขออนุมัติโครงการก่อสร้างถนน".repeat(3);
+        let fits = |s: &str| face.shape(s).width(16.0) <= 200.0;
+        let lines = wrap_with(&text, fits);
+        assert!(lines.len() > 3, "{lines:?}");
+        assert_eq!(lines.concat(), text);
+        for l in &lines {
+            assert!(fits(l), "{l}");
+            assert!(!l.chars().next().is_some_and(is_mark), "{l}");
+        }
+        // Each line but the last is as full as it can be: one more character would not fit.
+        for (l, next) in lines.iter().zip(&lines[1..]) {
+            let more = next.chars().next().unwrap();
+            assert!(!fits(&format!("{l}{more}")), "{l} + {more}");
+        }
     }
 
     #[test]
