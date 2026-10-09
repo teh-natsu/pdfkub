@@ -2674,7 +2674,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Master artwork; every other app-icon file is rendered from it (packaging/icons.sh)"
-sha256 = "a305504afcbc1e0d9587266d0281b8627193141531813112e61d8146b3263354"
+sha256 = "048635f0f0fa3b23912ec5d1649099612b7585bff1d126eebfcada8e4d908aa7"
 
 [[asset]]
 path = "assets/app-icon/pdfkub-small.svg"
@@ -2685,7 +2685,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "16-24 px icons (packaging/icons.sh)"
-sha256 = "697bef20cf5411c55ed8a58034a75593304a0bdcd6b32ec3586c2ac24e88c0b4"
+sha256 = "c339237a78e402e7ee6975dba20822344d09e6584842f9c0ba5abe4850ef64df"
 
 [[asset]]
 path = "assets/app-icon/pdfkub-1024.png"
@@ -2696,7 +2696,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Runtime window/Dock icon on macOS (apps/pdfkub/src/main.rs)"
-sha256 = "88347f38b6f251bc10fd0d8536dc72286a78c694d1d6df17337deb6801818833"
+sha256 = "ac07b4a8074b70b551c1e25c5e16b2d207644ad4ebd1e4072f6c36a335e28567"
 
 [[asset]]
 path = "assets/app-icon/pdfkub.icns"
@@ -2707,7 +2707,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "macOS app bundle icon"
-sha256 = "22d821643bc2b1814a0bd2678e3071e2a90914206acbf2d844834e5245360008"
+sha256 = "07aa2e64f4b044982a1be1f0d7658d8e1ca78cf83302fff00d37e36ec9cc1394"
 
 [[asset]]
 path = "assets/app-icon/pdfkub.ico"
@@ -2718,7 +2718,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Embedded in pdfkub.exe by apps/pdfkub/build.rs (Explorer, taskbar, Start menu, Alt-Tab)"
-sha256 = "9d49098740fc54af208dcaf67efe6aaded2c10c5c3dbdb006af132cfe79696e2"
+sha256 = "9432a678b407938d6d173f1268000c2e8c5eb3b6363e8524736cdfb12f5964c4"
 
 [[asset]]
 path = "assets/app-icon/hicolor/16x16/apps/io.github.teh_natsu.pdfkub.png"
@@ -2729,7 +2729,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop)"
-sha256 = "471ffe26491e3b25ef7fb4283104f61ff535758f0a29be73700c8f4bca596d0d"
+sha256 = "a466d1934497dcb630b8c2f0299a02929f157430f5bf9d1fa7fd48d79e7eacd9"
 
 [[asset]]
 path = "assets/app-icon/hicolor/24x24/apps/io.github.teh_natsu.pdfkub.png"
@@ -2740,7 +2740,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop)"
-sha256 = "3d2f25b643d2a46660c087bf3b9decc27a52350a32e1dbec87d48a027ee5dfbd"
+sha256 = "cb0bdc3e0d3bd3b36c387d236b8204f4bd8258a0ec662393e8b73e079b98fc42"
 
 [[asset]]
 path = "assets/app-icon/hicolor/32x32/apps/io.github.teh_natsu.pdfkub.png"
@@ -2751,7 +2751,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop)"
-sha256 = "f3f9dbbb01b0f0b819d6b5d0bc5b6d8a63d9c63c733b79f697e6838c802d4f0a"
+sha256 = "cdd98e9c15f7e9ccd751b5a373c38c568aa3a7525e5c194ef6400236688a4120"
 
 [[asset]]
 path = "assets/app-icon/hicolor/48x48/apps/io.github.teh_natsu.pdfkub.png"
@@ -2762,7 +2762,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop)"
-sha256 = "42ea76ef1994f0f36d5f1e11fdc234282b5ed1be7f77ed9978bd014e2e4a12e8"
+sha256 = "50ec870af8665db6ddfd8495e5cf1adcdd3023150cf43e56e75fe5f63d3feb40"
 
 [[asset]]
 path = "assets/app-icon/hicolor/64x64/apps/io.github.teh_natsu.pdfkub.png"
@@ -2773,7 +2773,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop)"
-sha256 = "f25002489b732c21cbc7615c42b906c46de3c4ec22189502d1424ebbfd6d0fef"
+sha256 = "269d595dfcc73a7910665b6bbb9f8abe4fa0661fa2978810c7146a16b6ae4b87"
 
 [[asset]]
 path = "assets/app-icon/hicolor/128x128/apps/io.github.teh_natsu.pdfkub.png"
@@ -2784,7 +2784,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop)"
-sha256 = "8f8ee09a6b30462b38df7ae587bf282ef34cea2ba29e2f8182e31e59b179d569"
+sha256 = "6caeb29088329075b5f61d1b484b8ac5fcbb53511c5cf1561fb223a9099bee55"
 
 [[asset]]
 path = "assets/app-icon/hicolor/256x256/apps/io.github.teh_natsu.pdfkub.png"
@@ -2795,7 +2795,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop); runtime window icon on Windows and Linux (apps/pdfkub/src/main.rs)"
-sha256 = "69fecc16012a93a10f698a120cd2d681d99cecf4df3c9b10e0686d549d9d1119"
+sha256 = "fdbd123349b630b72e95b7f5d5d2adcbff0c29909c7899a3d73e67abcc1a5766"
 
 [[asset]]
 path = "assets/app-icon/hicolor/512x512/apps/io.github.teh_natsu.pdfkub.png"
@@ -2806,7 +2806,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop)"
-sha256 = "253f3013070edd3a708e28820444b91fc3bcfd084f4206049a5df9d86326acac"
+sha256 = "586e9471d3ecc4810cb33634e49f0f76bf4a8ed131be470e980f6ba8c321470d"
 
 [[asset]]
 path = "assets/app-icon/hicolor/scalable/apps/io.github.teh_natsu.pdfkub.svg"
@@ -2817,7 +2817,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Linux hicolor theme icon (packaging/linux/io.github.teh_natsu.pdfkub.desktop)"
-sha256 = "a305504afcbc1e0d9587266d0281b8627193141531813112e61d8146b3263354"
+sha256 = "048635f0f0fa3b23912ec5d1649099612b7585bff1d126eebfcada8e4d908aa7"
 
 [[asset]]
 path = "assets/icons/pin.svg"
