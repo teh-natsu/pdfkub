@@ -67,3 +67,6 @@
 	Portable mode is off: {folder} can't be written ({error}). Settings are kept in your user folder instead.	O modo portátil está desativado: não é possível gravar em {folder} ({error}). As configurações ficam na sua pasta de usuário.
 	Go to page…	Ir para a página…
 	Reopen the files that were open when PdfKub last closed	Reabrir os arquivos que estavam abertos quando o PdfKub foi fechado pela última vez
+	Split right	Dividir à direita
+	Close split view	Fechar visualização dividida
+	Move to the other side	Mover para o outro lado

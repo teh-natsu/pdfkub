@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use egui::{Align2, Color32, CornerRadius, Pos2, Rect, Sense, Stroke, TextureHandle, TextureOptions, Vec2, pos2, vec2};
 use pdfcraft_engine::{DocId, Edit};
-use pdfcraft_render::{DocInfo, LayerOp, LinkTarget, PageText, RenderPool, RenderRequest, RequestKind, Tile, device_pixels};
+use pdfcraft_render::{DocInfo, LayerOp, LinkTarget, PageText, RenderPool, RenderRequest, RenderedPage, RequestKind, Tile, device_pixels};
 
 use crate::theme::{self, Tokens};
 use crate::{PdfKubApp, QuickTool, RightPanel, comments, icons, widgets};
@@ -286,6 +286,14 @@ pub struct DocView {
     /// A queued Fill & Sign signature: select it after its edit succeeds, then leave placement.
     pub(crate) fill_signature_page: Option<usize>,
     pub(crate) signature_drag: crate::signature_drag::SignatureDrag,
+    /// Which side of a split view shows this tab; `None` until the next frame places a new tab
+    /// on the side that has focus (see `split.rs`).
+    pub pane: Option<crate::split::Pane>,
+    /// Tells views apart when one document is open on both sides.
+    pub uid: u64,
+    /// Drawn on the side of a split view that doesn't have focus: shown and scrolled, but page
+    /// clicks and keys go to the focused side (set for each frame by `split.rs`).
+    pub passive: bool,
     /// A non-edit action requested by the organize toolbar, handled by the app.
     pub pending_action: Option<ViewAction>,
     /// The grid gap the next inserted files go to (set by a "+" between pages); otherwise they
@@ -408,6 +416,9 @@ impl DocView {
             fill_text: None,
             fill_signature_page: None,
             signature_drag: Default::default(),
+            pane: None,
+            uid: crate::split::next_uid(),
+            passive: false,
         }
     }
 
@@ -858,44 +869,65 @@ impl DocView {
         {
             n += 1;
             got = true;
-            if r.request.kind == RequestKind::Text {
-                match r.text {
-                    Some(t) => {
-                        self.texts.insert(r.request.page, t);
-                        self.refresh_find_page(r.request.page);
-                    }
-                    None => {
-                        log::warn!("page {} text: {}", r.request.page + 1, r.error.unwrap_or_default());
-                        self.text_failed.insert(r.request.page);
-                    }
-                }
-                continue;
-            }
-            if let Some(e) = r.error {
-                log::warn!("page {}: {e}", r.request.page + 1);
-                self.errors.insert(r.request.page, e);
-                continue;
-            }
-            let img = egui::ColorImage::from_rgba_premultiplied([r.width as usize, r.height as usize], &r.rgba);
-            let page = r.request.page;
-            if let Some(t) = r.request.tile {
-                let tex = ctx.load_texture(format!("tile-{:?}-{page}-{}-{}", self.id, t.x, t.y), img, TextureOptions::LINEAR);
-                self.tiles.insert((page, t.x / TILE, t.y / TILE), (r.request.tag, tex));
-                continue;
-            }
-            if r.request.tag & THUMB_TAG != 0 {
-                let tex = ctx.load_texture(format!("thumb-{:?}-{page}", self.id), img, TextureOptions::LINEAR);
-                self.thumbs.insert(page, tex);
-                self.stale_thumbs.remove(&page);
-            } else {
-                let tex = ctx.load_texture(format!("page-{:?}-{page}", self.id), img, TextureOptions::LINEAR);
-                self.pages.insert(page, PageTex { tag: r.request.tag, tex });
-                self.signature_drag.page_received(page);
-                self.waiting_since.remove(&page);
-            }
+            self.take_render(ctx, &r);
         }
         if got {
             ctx.request_repaint();
+        }
+    }
+
+    /// [`Self::receive`] for one document shown on both sides of a split view: the renders are
+    /// pulled once (`results`) and each view takes those at its own scale, so the two sides don't
+    /// keep replacing each other's rasters at the other's zoom.
+    pub fn receive_shared(&mut self, ctx: &egui::Context, results: &[RenderedPage]) {
+        let tag = scale_tag(self.render_scale(ctx.pixels_per_point()));
+        for r in results {
+            let raster = r.request.kind != RequestKind::Text && r.error.is_none() && r.request.tag & THUMB_TAG == 0;
+            if !raster || r.request.tag == tag {
+                self.take_render(ctx, r);
+            }
+        }
+        if !results.is_empty() {
+            ctx.request_repaint();
+        }
+    }
+
+    /// One finished render into this view's textures, text or errors.
+    fn take_render(&mut self, ctx: &egui::Context, r: &RenderedPage) {
+        if r.request.kind == RequestKind::Text {
+            match r.text.clone() {
+                Some(t) => {
+                    self.texts.insert(r.request.page, t);
+                    self.refresh_find_page(r.request.page);
+                }
+                None => {
+                    log::warn!("page {} text: {}", r.request.page + 1, r.error.clone().unwrap_or_default());
+                    self.text_failed.insert(r.request.page);
+                }
+            }
+            return;
+        }
+        if let Some(e) = r.error.clone() {
+            log::warn!("page {}: {e}", r.request.page + 1);
+            self.errors.insert(r.request.page, e);
+            return;
+        }
+        let img = egui::ColorImage::from_rgba_premultiplied([r.width as usize, r.height as usize], &r.rgba);
+        let page = r.request.page;
+        if let Some(t) = r.request.tile {
+            let tex = ctx.load_texture(format!("tile-{:?}-{page}-{}-{}", self.id, t.x, t.y), img, TextureOptions::LINEAR);
+            self.tiles.insert((page, t.x / TILE, t.y / TILE), (r.request.tag, tex));
+            return;
+        }
+        if r.request.tag & THUMB_TAG != 0 {
+            let tex = ctx.load_texture(format!("thumb-{:?}-{page}", self.id), img, TextureOptions::LINEAR);
+            self.thumbs.insert(page, tex);
+            self.stale_thumbs.remove(&page);
+        } else {
+            let tex = ctx.load_texture(format!("page-{:?}-{page}", self.id), img, TextureOptions::LINEAR);
+            self.pages.insert(page, PageTex { tag: r.request.tag, tex });
+            self.signature_drag.page_received(page);
+            self.waiting_since.remove(&page);
         }
     }
 
@@ -1242,7 +1274,7 @@ pub fn document_area(app: &mut PdfKubApp, index: usize, ui: &mut egui::Ui) {
         None => {}
     }
     // No dialog, close prompt or palette over the page: only then does page input count.
-    let unobstructed = app.dialog.is_none() && app.close_request.is_none() && !app.palette_open;
+    let unobstructed = app.dialog.is_none() && app.close_request.is_none() && !app.palette_open && !view.passive;
     if view.organize {
         organize_grid(view, info, &doc.renderer, doc.allows_assembly(), doc.dirty, unobstructed, ui, &t);
         return;
@@ -1325,7 +1357,7 @@ pub fn document_area(app: &mut PdfKubApp, index: usize, ui: &mut egui::Ui) {
         ..Default::default()
     });
     // Each document keeps its own scroll position when switching tabs (#189).
-    scroll = scroll.id_salt(("page-view", view.id));
+    scroll = scroll.id_salt(("page-view", view.id, view.uid));
     if let Some((page, fx, fy, rel)) = view.zoom_anchor.take() {
         let r = rects[page.min(rects.len() - 1)];
         let point = pos2(r.left() + fx * r.width(), r.top() - y_shift + fy * r.height());
@@ -1997,7 +2029,9 @@ pub fn document_area(app: &mut PdfKubApp, index: usize, ui: &mut egui::Ui) {
             });
         });
     }
-    find_bar(view, info.pages.len(), avail, ui, &t);
+    if !view.passive {
+        find_bar(view, info.pages.len(), avail, ui, &t);
+    }
     if let Some(e) = comments::composer(ui.ctx(), view, info, prefs) {
         view.pending_edit = Some(e);
     }
@@ -2018,15 +2052,20 @@ pub fn document_area(app: &mut PdfKubApp, index: usize, ui: &mut egui::Ui) {
     // One crop, then back to selecting (as Acrobat does).
     let cropped = view.pending_edit.as_ref().is_some_and(|e| matches!(e, pdfcraft_engine::Edit::SetPageBox { .. }));
     let mut tool = app.quick_tool;
-    comments::keys(ui.ctx(), view, &mut tool, allowed);
-    if preparing {
+    let passive = view.passive;
+    if !passive {
+        comments::keys(ui.ctx(), view, &mut tool, allowed);
+    }
+    if preparing && !passive {
         crate::prepare::keys(ui.ctx(), view);
     }
-    if editing_content {
+    if editing_content && !passive {
         crate::content_ui::keys(ui.ctx(), view);
     }
     if tool == QuickTool::Link {
-        crate::link_ui::keys(ui.ctx(), view);
+        if !passive {
+            crate::link_ui::keys(ui.ctx(), view);
+        }
     } else {
         view.links.selected = None;
     }
@@ -2151,7 +2190,9 @@ pub fn document_area(app: &mut PdfKubApp, index: usize, ui: &mut egui::Ui) {
     if let Some((name, action)) = app.views[index].forms.button.take() {
         run_button(app, index, &name, action);
     }
-    quick_bar(app, avail, ui);
+    if !app.views[index].passive {
+        quick_bar(app, avail, ui);
+    }
 }
 
 /// Run a push button's action (the ones that need no JavaScript engine).

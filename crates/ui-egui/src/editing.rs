@@ -405,6 +405,11 @@ impl PdfKubApp {
 
     /// Close a tab, asking first if it has unsaved changes.
     pub fn request_close_tab(&mut self, index: usize) {
+        // The same document open on the other side of a split view: only this tab goes.
+        if self.has_twin(index) {
+            self.remove_view(index);
+            return;
+        }
         // Text typed into a field counts as an unsaved change.
         if self.has_unsaved_work(index)
             && let Some(id) = self.views.get(index).map(|v| v.id)

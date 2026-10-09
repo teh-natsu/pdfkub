@@ -84,6 +84,7 @@ mod pickers;
 pub mod prepare;
 mod print_ui;
 mod signature_drag;
+pub mod split;
 pub use print_ui::{Handling as PrintHandling, PrintDraft, Which as PrintWhich};
 mod redact_ui;
 pub use redact_ui::{HiddenDraft, PagesDraft as RedactPagesDraft, RedactPrefs, SearchDraft as RedactSearchDraft};
@@ -346,6 +347,8 @@ pub struct RecentFile {
 pub struct PdfKubApp {
     pub session: Session,
     pub views: Vec<DocView>,
+    /// Split view: the two sides' layout and focus (each tab's side is in its `DocView`).
+    pub split: split::SplitState,
     /// `None` shows the Home tab.
     pub active: Option<usize>,
     pub mode: Mode,
@@ -608,6 +611,7 @@ impl PdfKubApp {
         Self {
             session: Session::new(),
             views: Vec::new(),
+            split: Default::default(),
             active: None,
             mode: Mode::AllTools,
             default_mode: Mode::AllTools,
@@ -1045,15 +1049,13 @@ impl PdfKubApp {
         if index >= self.views.len() {
             return;
         }
-        let id = self.views.remove(index).id;
+        // The document closes with every tab showing it (one on each side of a split view).
+        let id = self.views[index].id;
+        while let Some(i) = self.views.iter().rposition(|v| v.id == id) {
+            self.remove_view(i);
+        }
         self.forget_recovery(id);
         self.session.close(id);
-        self.active = match self.active {
-            _ if self.views.is_empty() => None,
-            Some(a) if a > index => Some(a - 1),
-            Some(a) if a >= self.views.len() => Some(self.views.len() - 1),
-            other => other,
-        };
     }
 
     pub fn active_ids(&self) -> Option<(usize, DocId)> {
@@ -1706,9 +1708,25 @@ impl eframe::App for PdfKubApp {
         #[cfg(not(target_arch = "wasm32"))]
         self.process_picked();
         // Pull finished renders into textures for every open document.
-        for view in &mut self.views {
-            if let Some(doc) = self.session.get(view.id) {
-                view.receive(ctx, &doc.renderer);
+        self.settle_panes();
+        for i in 0..self.views.len() {
+            let id = self.views[i].id;
+            let Some(doc) = self.session.get(id) else { continue };
+            if !self.views.iter().enumerate().any(|(j, v)| j != i && v.id == id) {
+                self.views[i].receive(ctx, &doc.renderer);
+            } else if self.views[..i].iter().all(|v| v.id != id) {
+                // One document on both sides of a split view: its renders are pulled once and
+                // shared, each side taking those at its own scale.
+                let mut results = Vec::new();
+                let budget = if doc.renderer.is_inline() { 1 } else { usize::MAX };
+                while results.len() < budget
+                    && let Some(r) = doc.renderer.try_recv()
+                {
+                    results.push(r);
+                }
+                for v in self.views.iter_mut().filter(|v| v.id == id) {
+                    v.receive_shared(ctx, &results);
+                }
             }
         }
     }
@@ -1764,6 +1782,7 @@ impl eframe::App for PdfKubApp {
         egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.pasteboard)).show(ui, |ui| match self.active {
             None if self.combine_showing() => combine_ui::page(self, ui),
             None => home::show(self, ui),
+            Some(_) if self.is_split() => split::show(self, ui),
             Some(i) => canvas::document_area(self, i, ui),
         });
         self.process_pending_edits();

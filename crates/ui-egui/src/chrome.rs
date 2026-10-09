@@ -29,7 +29,9 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                     app.combine_tab.focused = false;
                 }
                 // Keep the two 28-point buttons, Discord's text/padding and three gaps outside the scrolling tabs.
-                let controls_width = ui.fonts_mut(|f| f.layout_no_wrap("Discord".into(), theme::medium(13.0), t.text).size().x) + 106.0;
+                let controls_width = ui.fonts_mut(|f| f.layout_no_wrap("Discord".into(), theme::medium(13.0), t.text).size().x) + 138.0;
+                // Split view: each side shows its own tabs (split.rs); these return with Home.
+                let split = app.is_split() && app.active.is_some();
                 let state = (app.active, app.views.len(), app.combine_showing());
                 let changed = ui.data_mut(|data| {
                     let id = ui.id().with("active_tab");
@@ -47,6 +49,9 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                         .show(ui, |ui| {
                             ui.horizontal_centered(|ui| {
                                 for i in 0..app.views.len() {
+                                    if split {
+                                        break;
+                                    }
                                     let Some(doc) = app.session.get(app.views[i].id) else { continue };
                                     let (name, dirty) = (doc.display_name(), doc.dirty);
                                     let response = tab(ui, &t, "file-text", &name, dirty, app.active == Some(i), &mut close, i);
@@ -93,6 +98,13 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                     if icons::button(ui, "circle-help", 28.0, false, tl!("Keyboard shortcuts")).clicked() {
                         app.dialog = Some(Dialog::Shortcuts);
                     }
+                    if app.active.is_some() {
+                        let on = app.is_split();
+                        let tip = if on { tl!("Close split view").to_owned() } else { format!(r"{} (⌘\)", tl!("Split right")) };
+                        if icons::button(ui, "columns-2", 28.0, on, &tip).clicked() {
+                            app.execute(if on { "view.split_close" } else { "view.split_right" });
+                        }
+                    }
                 });
             });
         });
@@ -113,7 +125,16 @@ fn theme_menu(app: &mut PdfKubApp, ui: &mut egui::Ui) {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn tab(ui: &mut egui::Ui, t: &Tokens, icon: &str, name: &str, dirty: bool, active: bool, close: &mut Option<usize>, index: usize) -> egui::Response {
+pub(crate) fn tab(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    icon: &str,
+    name: &str,
+    dirty: bool,
+    active: bool,
+    close: &mut Option<usize>,
+    index: usize,
+) -> egui::Response {
     let font = theme::regular(13.0);
     let label: String = if name.chars().count() > 28 { format!("{}…", name.chars().take(27).collect::<String>()) } else { name.to_string() };
     // Painted text only: the accessibility name below keeps the logical order.

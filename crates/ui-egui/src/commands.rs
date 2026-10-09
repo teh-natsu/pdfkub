@@ -171,6 +171,8 @@ impl PdfKubApp {
                     None => self.full_screen = on,
                 }
             }
+            "view.split_right" => self.split_right(),
+            "view.split_close" => self.close_split(),
             "view.read_mode" => self.mode = if self.mode == Mode::Read { Mode::AllTools } else { Mode::Read },
             "view.theme" => {
                 let next = if self.theme == ThemeKind::Light { ThemePreference::Dark } else { ThemePreference::Light };

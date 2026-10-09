@@ -109,3 +109,6 @@
 	Couldn't import the signature image: {e}	Obrázek podpisu nelze importovat: {e}
 	Portable mode is off: {folder} can't be written ({error}). Settings are kept in your user folder instead.	Přenosný režim je vypnutý: do složky {folder} nelze zapisovat ({error}). Nastavení se místo toho ukládá do vaší uživatelské složky.
 	Go to page…	Přejít na stránku…
+	Split right	Rozdělit doprava
+	Close split view	Zavřít rozdělené zobrazení
+	Move to the other side	Přesunout na druhou stranu
