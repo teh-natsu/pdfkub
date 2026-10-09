@@ -868,7 +868,7 @@ fn set_states(doc: &mut Document, f: &Field, on: Option<&str>) -> Result<(), For
             (Some(c), Some(s)) if c == s => s,
             _ => "Off",
         };
-        // A widget without appearances for its states gets PdfCraft's own.
+        // A widget without appearances for its states gets PdfKub's own.
         let has_ap = doc.get(w.obj).as_dict().and_then(|d| d.get(b"AP").cloned()).is_some();
         if !has_ap {
             let on_name = w.on_state.clone().unwrap_or_else(|| on.unwrap_or("Yes").to_string());

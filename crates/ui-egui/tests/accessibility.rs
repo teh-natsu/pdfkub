@@ -4,7 +4,7 @@
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use pdfcraft_engine::a11y::{Rule, Status};
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp, RightPanel};
+use pdfcraft_ui_egui::{Dialog, PdfKubApp, RightPanel};
 
 const FIXTURE: &[u8] = b"%PDF-1.7
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
@@ -17,11 +17,11 @@ endstream endobj
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn status(h: &Harness<'static, PdfCraftApp>, rule: Rule) -> Status {
+fn status(h: &Harness<'static, PdfKubApp>, rule: Rule) -> Status {
     h.state().a11y.report.as_ref().unwrap().1.result(rule).unwrap().status
 }
 
-fn right_click(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+fn right_click(h: &mut Harness<'static, PdfKubApp>, label: &str) {
     let at = h.get_by_label(label).rect().center();
     h.hover_at(at);
     h.run_steps(1);
@@ -37,7 +37,7 @@ fn checking_fixing_skipping_and_reporting() {
     std::fs::create_dir_all(&dir).unwrap();
     let d = dir.clone();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("notes.pdf", None, FIXTURE.to_vec()).unwrap();
         app.export_dir_override = Some(d.to_string_lossy().into_owned());
         app
@@ -61,7 +61,7 @@ fn checking_fixing_skipping_and_reporting() {
     h.run_steps(3);
     assert_eq!(status(&h, Rule::Title), Status::Passed);
     assert!(matches!(h.state().dialog, Some(Dialog::Properties(_))));
-    assert_eq!(h.state().window_title, "notes — PdfCraft");
+    assert_eq!(h.state().window_title, "notes — PdfKub");
     h.state_mut().dialog = None;
     h.run_steps(2);
     // Skip a rule; it stays skipped when checking again.
@@ -109,7 +109,7 @@ trailer << /Root 1 0 R >>
 #[test]
 fn setting_alternate_text_figure_by_figure() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("figures.pdf", None, FIGURES.to_vec()).unwrap();
         app
     });

@@ -4,7 +4,7 @@
 use pdfcraft_engine::Edit;
 use pdfcraft_platform::staging::{StagingName, create_staging, staging_suffixes};
 
-use crate::PdfCraftApp;
+use crate::PdfKubApp;
 
 /// What the user was doing when we asked whether to save.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,7 +27,7 @@ pub enum SaveTarget {
     As,
 }
 
-impl PdfCraftApp {
+impl PdfKubApp {
     /// Apply an edit to the active document. Returns `true` on success; failures are shown.
     pub fn apply_edit(&mut self, edit: Edit) -> bool {
         let Some((i, id)) = self.active_ids() else { return false };
@@ -574,7 +574,7 @@ pub(crate) fn download(name: &str, bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
-impl PdfCraftApp {
+impl PdfKubApp {
     /// Carry out a Bookmarks-panel action as an undoable edit.
     pub fn bookmark_action(&mut self, action: crate::panels::BmAction) {
         use crate::panels::BmAction as A;
@@ -636,14 +636,14 @@ mod tests {
 
     /// A fresh, empty folder for one staging test.
     fn staging_dir(test: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ui-staging-{}-{test}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("pdfkub-ui-staging-{}-{test}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
 
     fn staged(dir: &Path, suffix: u64) -> PathBuf {
-        dir.join(format!(".out.pdf.pdfcraft-{suffix:016x}.tmp"))
+        dir.join(format!(".out.pdf.pdfkub-{suffix:016x}.tmp"))
     }
 
     fn read(p: &Path) -> String {

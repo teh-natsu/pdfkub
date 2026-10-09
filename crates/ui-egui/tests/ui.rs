@@ -2,7 +2,7 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use pdfcraft_ui_egui::PdfKubApp;
 
 /// A tiny PDF with two pages, two bookmarks and one sticky note.
 const FIXTURE: &[u8] = b"%PDF-1.7
@@ -17,9 +17,9 @@ const FIXTURE: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness(setup: impl FnOnce(&mut PdfKubApp) + 'static) -> Harness<'static, PdfKubApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         setup(&mut app);
         app
     });
@@ -31,7 +31,7 @@ fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, P
 #[test]
 fn home_shows_welcome_and_tools() {
     let h = harness(|_| {});
-    h.get_by_label_contains("Welcome to PdfCraft");
+    h.get_by_label_contains("Welcome to PdfKub");
     assert!(h.query_all_by_label("Organize pages").count() >= 2, "tool list + home card");
     h.get_by_label("Open file");
 }
@@ -74,7 +74,7 @@ fn a_tab_with_an_arabic_file_name_keeps_its_logical_accessible_name() {
 
 #[test]
 fn garbage_input_is_rejected_without_panicking() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     assert!(app.open_bytes("junk.pdf", None, b"this is not a pdf".to_vec()).is_err());
     assert!(app.open_bytes("empty.pdf", None, Vec::new()).is_err());
     let mut truncated = FIXTURE.to_vec();
@@ -112,7 +112,7 @@ endstream endobj
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn settle(h: &mut Harness<'static, PdfCraftApp>) {
+fn settle(h: &mut Harness<'static, PdfKubApp>) {
     for _ in 0..200 {
         h.run_steps(2);
         if !h.state().render_pending() {
@@ -172,10 +172,10 @@ fn drag_selects_text_and_copy_returns_it() {
 
 #[test]
 fn persistence_round_trips_and_tolerates_garbage() {
-    let mut a = PdfCraftApp::new();
+    let mut a = PdfKubApp::new();
     a.set_option("theme", "dark").unwrap();
     let json = a.persist();
-    let mut b = PdfCraftApp::new();
+    let mut b = PdfKubApp::new();
     b.restore(&json);
     assert_eq!(b.theme, pdfcraft_ui_egui::theme::ThemeKind::Dark);
     b.restore("{not json");
@@ -246,7 +246,7 @@ impl egui::DroppedFile for Dropped {
 
 #[test]
 fn dropping_a_pdf_on_the_window_opens_it() {
-    let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| PdfCraftApp::new());
+    let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| PdfKubApp::new());
     h.run_steps(3);
     assert!(h.state().views.is_empty());
     let file: egui::DroppedFileHandle = std::sync::Arc::new(Dropped { path: "dropped.pdf".into(), bytes: FIXTURE.to_vec() });
@@ -258,12 +258,12 @@ fn dropping_a_pdf_on_the_window_opens_it() {
 
 #[test]
 fn pdfs_dropped_on_the_combine_tab_join_its_list() {
-    let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| PdfCraftApp::new());
+    let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| PdfKubApp::new());
     h.run_steps(3);
     h.state_mut().execute("page.combine");
     h.run_steps(2);
     // An absolute path is read from disk, with its modified time.
-    let path = std::env::temp_dir().join(format!("pdfcraft-combine-drop-{}.pdf", std::process::id()));
+    let path = std::env::temp_dir().join(format!("pdfkub-combine-drop-{}.pdf", std::process::id()));
     std::fs::write(&path, FIXTURE).unwrap();
     let on_disk: egui::DroppedFileHandle = std::sync::Arc::new(Dropped { path: path.clone(), bytes: Vec::new() });
     let in_memory: egui::DroppedFileHandle = std::sync::Arc::new(Dropped { path: "second.pdf".into(), bytes: FIXTURE.to_vec() });
@@ -279,12 +279,12 @@ fn pdfs_dropped_on_the_combine_tab_join_its_list() {
 
 #[test]
 fn a_folder_dropped_on_the_combine_tab_adds_its_pdfs() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-combine-drop-dir-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("pdfkub-combine-drop-dir-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("inner")).unwrap();
     std::fs::write(dir.join("one.pdf"), FIXTURE).unwrap();
     std::fs::write(dir.join("inner").join("two.pdf"), FIXTURE).unwrap();
-    let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| PdfCraftApp::new());
+    let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| PdfKubApp::new());
     h.run_steps(3);
     h.state_mut().execute("page.combine");
     h.run_steps(2);
@@ -300,7 +300,7 @@ fn a_folder_dropped_on_the_combine_tab_adds_its_pdfs() {
 fn files_and_quit_from_the_operating_system() {
     // #73: macOS hands Finder double-clicks, Open With and Dock drops over as Apple events.
     use pdfcraft_ui_egui::OsEvent;
-    let name = format!("pdfcraft-os-open-{}.pdf", std::process::id());
+    let name = format!("pdfkub-os-open-{}.pdf", std::process::id());
     let path = std::env::temp_dir().join(&name);
     std::fs::write(&path, FIXTURE).unwrap();
     let queue = std::rc::Rc::new(std::cell::RefCell::new(vec![OsEvent::Open(vec![path.to_string_lossy().into_owned()])]));
@@ -320,17 +320,17 @@ fn files_and_quit_from_the_operating_system() {
 fn default_workspace_mode_persists_and_tolerates_invalid_settings() {
     use pdfcraft_ui_egui::Mode;
     for mode in [Mode::AllTools, Mode::Read, Mode::Edit, Mode::Convert, Mode::Sign] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.default_mode = mode;
         app.set_option("mode", "sign").unwrap();
-        let mut restored = PdfCraftApp::new();
+        let mut restored = PdfKubApp::new();
         restored.restore(&app.persist());
         assert_eq!(restored.default_mode, mode);
         restored.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).unwrap();
         assert_eq!(restored.mode, mode, "session override must not be persisted");
     }
     for json in ["{}", "{not json", r#"{"default_mode": null}"#, r#"{"default_mode": 5}"#, r#"{"default_mode": "unknown"}"#] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.restore(json);
         assert_eq!(app.default_mode, Mode::AllTools);
         app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).unwrap();
@@ -341,7 +341,7 @@ fn default_workspace_mode_persists_and_tolerates_invalid_settings() {
 #[test]
 fn newly_opened_pdfs_use_the_default_workspace() {
     use pdfcraft_ui_egui::{LeftPanel, Mode};
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     app.restore(r#"{"default_mode": "edit"}"#);
     app.open_bytes("first.pdf", None, FIXTURE.to_vec()).unwrap();
     assert_eq!(app.mode, Mode::Edit);
@@ -364,7 +364,7 @@ fn explicit_mode_overrides_default_before_and_after_open() {
     use pdfcraft_ui_egui::Mode;
     for before in [false, true] {
         for (value, mode) in [("all", Mode::AllTools), ("read", Mode::Read), ("edit", Mode::Edit), ("convert", Mode::Convert), ("sign", Mode::Sign)] {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfKubApp::new();
             app.default_mode = Mode::Read;
             if before {
                 app.set_option("mode", value).unwrap();
@@ -402,7 +402,7 @@ fn preferences_selects_default_workspace_for_next_open() {
 #[test]
 fn explicit_mode_preserves_independent_tool_and_panel_options() {
     use pdfcraft_ui_egui::LeftPanel;
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     app.set_option("tool", "export").unwrap();
     app.set_option("left", "closed").unwrap();
     app.set_option("mode", "edit").unwrap();
@@ -417,14 +417,14 @@ fn explicit_mode_preserves_independent_tool_and_panel_options() {
 fn opening_a_pdf_keeps_a_closed_left_panel_and_the_chosen_tool() {
     use pdfcraft_ui_egui::{LeftPanel, Mode};
     // `--left closed` without `--mode`, default workspace Edit: the panel stays closed.
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     app.default_mode = Mode::Edit;
     app.set_option("left", "closed").unwrap();
     app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).unwrap();
     assert_eq!(app.mode, Mode::Edit);
     assert!(!app.left_open);
     // Default All Tools: opening another PDF leaves the tool panel the user picked.
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     app.set_option("tool", "export").unwrap();
     app.open_bytes("first.pdf", None, FIXTURE.to_vec()).unwrap();
     app.open_bytes("second.pdf", None, FIXTURE.to_vec()).unwrap();

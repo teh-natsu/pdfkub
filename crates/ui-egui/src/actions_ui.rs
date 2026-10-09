@@ -1,4 +1,4 @@
-//! Action Wizard: the actions (PdfCraft's and your own), running one over files in the
+//! Action Wizard: the actions (PdfKub's and your own), running one over files in the
 //! background, and creating or editing an action's steps. Your actions are remembered.
 
 use std::sync::{Arc, Mutex};
@@ -7,7 +7,7 @@ use egui::{Align, Layout};
 use pdfcraft_engine::actions::{Action, Step, builtin};
 
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, widgets};
+use crate::{PdfKubApp, widgets};
 
 /// The Action Wizard's state.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -28,7 +28,7 @@ pub struct RunProgress {
     pub message: Option<String>,
 }
 
-impl PdfCraftApp {
+impl PdfKubApp {
     /// Built-in actions, then the user's.
     pub fn all_actions(&self) -> Vec<Action> {
         let mut v = builtin();
@@ -100,7 +100,7 @@ impl PdfCraftApp {
         if self.run_inline {
             work();
         } else {
-            std::thread::Builder::new().name("pdfcraft-action".into()).spawn(work).ok();
+            std::thread::Builder::new().name("pdfkub-action".into()).spawn(work).ok();
         }
         #[cfg(target_arch = "wasm32")]
         work();
@@ -200,7 +200,7 @@ pub fn decode(v: &serde_json::Value) -> Vec<Action> {
 }
 
 /// The Action Wizard dialog. Returns `true` to close.
-pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> bool {
+pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfKubApp, t: &Tokens) -> bool {
     if app.wizard.editing.is_some() {
         return edit_body(ui, app, t);
     }
@@ -271,7 +271,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> bool
     close
 }
 
-fn edit_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> bool {
+fn edit_body(ui: &mut egui::Ui, app: &mut PdfKubApp, t: &Tokens) -> bool {
     let Some((original, a)) = app.wizard.editing.as_mut() else { return false };
     ui.label(egui::RichText::new(if original.is_some() { tl!("Edit Action") } else { tl!("New Action") }).font(theme::semibold(18.0)));
     ui.add_space(8.0);

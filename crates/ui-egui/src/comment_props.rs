@@ -7,7 +7,7 @@ use pdfcraft_engine::{CommentProps, Edit, NoteIcon};
 
 use crate::comments::swatch_grid;
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, widgets};
+use crate::{PdfKubApp, widgets};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PropsTab {
@@ -28,7 +28,7 @@ pub struct PropsDraft {
 const ICONS: [NoteIcon; 7] =
     [NoteIcon::Comment, NoteIcon::Note, NoteIcon::Help, NoteIcon::Insert, NoteIcon::Key, NoteIcon::NewParagraph, NoteIcon::Paragraph];
 
-impl PdfCraftApp {
+impl PdfKubApp {
     /// Attach file: ask for a file (or take `attach_override`) and attach it at `at`.
     pub fn attach_file_comment(&mut self, page: usize, at: [f64; 2]) {
         match self.attach_override.take() {
@@ -124,7 +124,7 @@ pub fn edits(d: &PropsDraft) -> Vec<Edit> {
 }
 
 /// Draw the dialog; returns (apply, cancel).
-pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (bool, bool) {
+pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfKubApp, t: &Tokens) -> (bool, bool) {
     let history: Vec<(String, String, String)> = app
         .active_ids()
         .and_then(|(_, id)| app.session.get(id))

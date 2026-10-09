@@ -552,7 +552,7 @@ pub(crate) fn after_refresh(view: &mut DocView, form: &[FormField]) {
 
 // ───────────────────────────────────────────────────────────────────────── Field Properties
 
-impl crate::PdfCraftApp {
+impl crate::PdfKubApp {
     /// Open Field Properties for a field of the active document.
     pub fn open_field_props(&mut self, name: &str, widget: usize) {
         let Some((_, id)) = self.active_ids() else { return };

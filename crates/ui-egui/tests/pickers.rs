@@ -7,7 +7,7 @@
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use pdfcraft_render::PageRenderer;
-use pdfcraft_ui_egui::PdfCraftApp;
+use pdfcraft_ui_egui::PdfKubApp;
 
 /// An `n`-page document with a proper xref table.
 fn fixture(n: usize) -> Vec<u8> {
@@ -35,16 +35,16 @@ fn fixture(n: usize) -> Vec<u8> {
     out
 }
 
-fn pages(app: &PdfCraftApp, view: usize) -> usize {
+fn pages(app: &PdfKubApp, view: usize) -> usize {
     let doc = app.session.get(app.views[view].id).unwrap();
     PageRenderer::new(doc.bytes.clone(), Default::default()).page_count()
 }
 
 /// A shell with `docs` open, each the given number of pages.
-fn harness(docs: &[usize]) -> Harness<'static, PdfCraftApp> {
+fn harness(docs: &[usize]) -> Harness<'static, PdfKubApp> {
     let docs = docs.to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         for (i, n) in docs.iter().enumerate() {
             app.open_bytes(&format!("doc{i}.pdf"), None, fixture(*n)).unwrap();
         }
@@ -110,7 +110,7 @@ fn a_pick_for_a_document_that_is_no_longer_active_is_dropped() {
 
 /// A scratch folder for one test.
 fn scratch(name: &str) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-pickers-{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("pdfkub-pickers-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -120,11 +120,11 @@ fn page_count(bytes: Vec<u8>) -> usize {
     PageRenderer::new(std::sync::Arc::new(bytes), Default::default()).page_count()
 }
 
-fn dirty(app: &PdfCraftApp, view: usize) -> bool {
+fn dirty(app: &PdfKubApp, view: usize) -> bool {
     app.session.get(app.views[view].id).is_some_and(|d| d.dirty)
 }
 
-fn rotate_first_page(app: &mut PdfCraftApp) {
+fn rotate_first_page(app: &mut PdfKubApp) {
     app.apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
 }
 
@@ -345,7 +345,7 @@ fn a_watermark_file_from_browse_lands_only_in_the_dialog_that_asked() {
 
 /// Browsers read picked files asynchronously and queue them on `requests` (#167): the request
 /// is made when the picker opens, so it is bound to the document active then.
-fn browser_insert(h: &Harness<'static, PdfCraftApp>, pages: usize) -> pdfcraft_ui_egui::FileRequest {
+fn browser_insert(h: &Harness<'static, PdfKubApp>, pages: usize) -> pdfcraft_ui_egui::FileRequest {
     h.state().file_request(pdfcraft_ui_egui::FilePurpose::InsertPages, vec![("b.pdf".into(), fixture(pages))])
 }
 

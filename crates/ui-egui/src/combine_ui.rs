@@ -14,7 +14,7 @@ use egui_extras::{Column, TableBuilder};
 use pdfcraft_engine::SourceProblem;
 
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, icons, widgets};
+use crate::{PdfKubApp, icons, widgets};
 
 /// Same reds and ambers as the signature status (`sign_ui`).
 const ERROR: Color32 = Color32::from_rgb(0xD7, 0x37, 0x3F);
@@ -358,7 +358,7 @@ struct TableEvents {
 }
 
 /// The Combine files page.
-pub(crate) fn page(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+pub(crate) fn page(app: &mut PdfKubApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let files_hovering = ui.ctx().input(|i| !i.raw.hovered_files.is_empty());
     // Ranges are checked before anything below reads them.
@@ -517,7 +517,7 @@ pub(crate) fn page(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 
 /// Unlock…'s password box, floating below what opened it. Enter unlocks, Escape or a click
 /// elsewhere closes it.
-fn unlock_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
+fn unlock_prompt(app: &mut PdfKubApp, ctx: &egui::Context) {
     let Some(mut prompt) = app.combine_tab.unlock.take() else { return };
     let t = Tokens::get(ctx);
     let files: Vec<&CombineFile> = app.combine_draft.iter().filter(|f| prompt.rows.contains(&f.id)).collect();
@@ -656,7 +656,7 @@ fn keyboard(ui: &egui::Ui, n: usize, any_selected: bool) -> Option<RowAction> {
     })
 }
 
-fn empty_state(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, files_hovering: bool) {
+fn empty_state(app: &mut PdfKubApp, ui: &mut egui::Ui, t: &Tokens, files_hovering: bool) {
     ui.vertical_centered(|ui| {
         ui.add_space((ui.available_height() / 2.0 - 70.0).max(16.0));
         ui.add(icons::image("files", 40.0, if files_hovering { t.accent } else { t.text_faint }));
@@ -684,7 +684,7 @@ fn empty_state(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, files_hover
 }
 
 /// "Add files…" with a menu of the other ways to add: folders (desktop).
-fn add_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+fn add_menu(app: &mut PdfKubApp, ui: &mut egui::Ui) {
     if !cfg!(not(target_arch = "wasm32")) {
         if widgets::icon_pill(ui, "plus", tl!("Add files…"), false).clicked() {
             app.combine_dialog();
@@ -719,7 +719,7 @@ fn add_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 }
 
 /// The file table.
-fn table(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, checks: &[Result<usize, String>], selected: &[bool]) -> TableEvents {
+fn table(app: &mut PdfKubApp, ui: &mut egui::Ui, t: &Tokens, checks: &[Result<usize, String>], selected: &[bool]) -> TableEvents {
     let mut events = TableEvents::default();
     // The same file twice is allowed (e.g. a cover sheet), but probably a mistake.
     let twice: Vec<bool> = app
@@ -840,7 +840,7 @@ fn heading(ui: &mut egui::Ui, t: &Tokens, key: SortKey, sort: Option<(SortKey, b
 
 #[allow(clippy::too_many_arguments)]
 fn table_body(
-    app: &mut PdfCraftApp,
+    app: &mut PdfKubApp,
     ui: &mut egui::Ui,
     t: &Tokens,
     rows: &Rows,
@@ -1133,7 +1133,7 @@ fn utc_stamp(time: SystemTime) -> String {
     format!("{y:04}-{m:02}-{d:02} {:02}:{:02} UTC", rem / 3600, rem % 3600 / 60)
 }
 
-impl PdfCraftApp {
+impl PdfKubApp {
     /// Show the Combine files tab (File ▸ Combine files…), opening it if needed.
     pub fn open_combine_tab(&mut self) {
         self.combine_tab.open = true;

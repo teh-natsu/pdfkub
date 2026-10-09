@@ -2,7 +2,7 @@
 
 use egui::{Key, Modifiers, MouseWheelUnit, TouchPhase};
 use egui_kittest::Harness;
-use pdfcraft_ui_egui::PdfCraftApp;
+use pdfcraft_ui_egui::PdfKubApp;
 
 /// Three 300×400 pt pages. Page 1 links to page 3.
 const PAGES: &[u8] = b"%PDF-1.7
@@ -27,14 +27,14 @@ fn gpu() -> std::sync::MutexGuard<'static, ()> {
     GPU.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-fn harness(options: &'static [(&'static str, &'static str)]) -> Harness<'static, PdfCraftApp> {
+fn harness(options: &'static [(&'static str, &'static str)]) -> Harness<'static, PdfKubApp> {
     harness_stepping(1.0 / 4.0, options)
 }
 
 /// [`harness`] with frames `step_dt` seconds apart (a quarter second is kittest's default).
-fn harness_stepping(step_dt: f32, options: &'static [(&'static str, &'static str)]) -> Harness<'static, PdfCraftApp> {
+fn harness_stepping(step_dt: f32, options: &'static [(&'static str, &'static str)]) -> Harness<'static, PdfKubApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_step_dt(step_dt).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("pages.pdf", None, PAGES.to_vec()).expect("opens");
         app.set_option("left", "closed").unwrap();
         app.set_option("panel", "none").unwrap();
@@ -47,7 +47,7 @@ fn harness_stepping(step_dt: f32, options: &'static [(&'static str, &'static str
     h
 }
 
-fn rect(h: &Harness<'static, PdfCraftApp>, page: usize) -> Option<egui::Rect> {
+fn rect(h: &Harness<'static, PdfKubApp>, page: usize) -> Option<egui::Rect> {
     h.state().views[0].page_screen_rect(page)
 }
 
@@ -60,9 +60,9 @@ const MIXED: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn mixed_harness(options: &'static [(&'static str, &'static str)]) -> Harness<'static, PdfCraftApp> {
+fn mixed_harness(options: &'static [(&'static str, &'static str)]) -> Harness<'static, PdfKubApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("mixed.pdf", None, MIXED.to_vec()).expect("opens");
         app.set_option("left", "closed").unwrap();
         app.set_option("panel", "none").unwrap();
@@ -229,7 +229,7 @@ fn layout_option_rejects_typos() {
 
 #[test]
 fn view_options_without_a_document() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     assert!(app.set_option("default-layout", "single").is_ok(), "the default needs no document");
     assert_eq!(app.view_defaults.layout, pdfcraft_ui_egui::canvas::PageLayout::Single);
     assert!(app.set_option("cover", "on").is_err(), "cover needs an open document");
@@ -240,7 +240,7 @@ fn view_options_without_a_document() {
 fn default_page_display_is_used_for_new_documents() {
     use pdfcraft_ui_egui::canvas::PageLayout;
     // The factory default is continuous scrolling without snap jumps.
-    assert_eq!(PdfCraftApp::new().view_defaults.layout, PageLayout::Continuous);
+    assert_eq!(PdfKubApp::new().view_defaults.layout, PageLayout::Continuous);
     let mut h = harness(&[]);
     h.state_mut().set_option("default-layout", "single").unwrap();
     h.state_mut().open_bytes("other.pdf", None, PAGES.to_vec()).expect("opens");
@@ -250,7 +250,7 @@ fn default_page_display_is_used_for_new_documents() {
     assert_eq!(h.state().views[2].layout, PageLayout::Single);
     // Persisted preferences survive a restart.
     let saved = h.state().persist();
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfKubApp::new();
     fresh.restore(&saved);
     assert_eq!(fresh.view_defaults.layout, PageLayout::Single);
     // Garbage keeps the previous default; casing is forgiven; legacy files lack the key.
@@ -258,7 +258,7 @@ fn default_page_display_is_used_for_new_documents() {
     assert_eq!(fresh.view_defaults.layout, PageLayout::Single);
     fresh.restore(r#"{"default_layout":"TWO-UP"}"#);
     assert_eq!(fresh.view_defaults.layout, PageLayout::TwoUp);
-    let mut legacy = PdfCraftApp::new();
+    let mut legacy = PdfKubApp::new();
     legacy.restore("{}");
     assert_eq!(legacy.view_defaults.layout, PageLayout::Continuous);
 }
@@ -266,7 +266,7 @@ fn default_page_display_is_used_for_new_documents() {
 #[test]
 fn default_zoom_is_used_for_new_documents() {
     use pdfcraft_ui_egui::canvas::Fit;
-    let fit_zoom = |app: &PdfCraftApp, i: usize| (app.views[i].fit, app.views[i].zoom);
+    let fit_zoom = |app: &PdfKubApp, i: usize| (app.views[i].fit, app.views[i].zoom);
     let mut h = harness(&[]);
     // The factory default fits the width.
     assert_eq!(h.state().views[0].fit, Fit::Width);
@@ -286,7 +286,7 @@ fn default_zoom_is_used_for_new_documents() {
     }
     // Saved settings keep it, and garbage leaves it alone.
     let saved = h.state().persist();
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfKubApp::new();
     fresh.restore(&saved);
     fresh.restore(r#"{"default_zoom":"bogus"}"#);
     fresh.open_bytes("again.pdf", None, PAGES.to_vec()).expect("opens");
@@ -311,13 +311,13 @@ fn rail_page_display_menu_offers_acrobats_view_choices() {
     use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
     let mut h = harness(&[]);
     h.run_steps(4);
-    let pick = |h: &mut Harness<'static, PdfCraftApp>, item: &str| {
+    let pick = |h: &mut Harness<'static, PdfKubApp>, item: &str| {
         h.get_by_label_contains("Page display:").click();
         h.run_steps(3);
         h.get_by_label(item).click();
         h.run_steps(4);
     };
-    let shown = |h: &Harness<'static, PdfCraftApp>| (h.state().views[0].layout, h.state().views[0].fit);
+    let shown = |h: &Harness<'static, PdfKubApp>| (h.state().views[0].layout, h.state().views[0].fit);
     pick(&mut h, "Fit one full page");
     assert_eq!(shown(&h), (PageLayout::Single, Fit::Page));
     // The whole page fits at once, so the wheel turns pages without zooming out first.
@@ -460,9 +460,9 @@ endstream endobj
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn form_harness() -> Harness<'static, PdfCraftApp> {
+fn form_harness() -> Harness<'static, PdfKubApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("form.pdf", None, FORM.to_vec()).expect("opens");
         app.set_option("left", "closed").unwrap();
         app
@@ -499,7 +499,7 @@ fn highlight_fields_tints_the_field_area() {
     let r = rect(&h, 0).expect("page 1");
     // The field spans x 50..250, y 300..330 (PDF space, y up) on a 300×400 page; sample inside it.
     let at = egui::pos2(r.min.x + r.width() * (60.0 / 300.0), r.min.y + r.height() * (1.0 - 305.0 / 400.0));
-    let pixel = |h: &mut Harness<'static, PdfCraftApp>| {
+    let pixel = |h: &mut Harness<'static, PdfKubApp>| {
         let img = h.render().expect("renders");
         let ppp = h.ctx.pixels_per_point();
         *img.get_pixel((at.x * ppp) as u32, (at.y * ppp) as u32)
@@ -530,7 +530,7 @@ trailer << /Root 1 0 R >>
 fn required_radio_buttons_get_a_round_red_border() {
     let _gpu = gpu();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("radios.pdf", None, RADIOS.to_vec()).expect("opens");
         app.set_option("left", "closed").unwrap();
         app.set_option("panel", "none").unwrap();
@@ -574,7 +574,7 @@ fn field_highlighting_is_remembered() {
     h.run_steps(4);
     assert!(h.state().views[1].highlight_fields, "the next document opens highlighted");
     let saved = h.state().persist();
-    let mut next = PdfCraftApp::new();
+    let mut next = PdfKubApp::new();
     next.restore(&saved);
     next.open_bytes("form.pdf", None, FORM.to_vec()).expect("opens");
     assert!(next.views[0].highlight_fields, "and so does the next session");
@@ -665,7 +665,7 @@ trailer << /Root 1 0 R >>
     for ppp in [1.0, 2.0] {
         let bytes = pdf.clone();
         let mut h = Harness::builder().with_size(egui::vec2(1000.0, 800.0)).with_pixels_per_point(ppp).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfKubApp::new();
             app.open_bytes("lines.pdf", None, bytes.clone()).expect("opens");
             app.set_option("left", "closed").unwrap();
             app.set_option("panel", "none").unwrap();
@@ -679,7 +679,7 @@ trailer << /Root 1 0 R >>
 
 /// Mean and largest difference between page 1 on screen and the page rendered directly at the
 /// view's exact device scale, over the lined area of `page_raster_maps_one_to_one_onto_screen_pixels`.
-fn compare_page_with_raster(h: &mut Harness<'static, PdfCraftApp>, pdf: &[u8], zoom: f32) -> (f64, u8) {
+fn compare_page_with_raster(h: &mut Harness<'static, PdfKubApp>, pdf: &[u8], zoom: f32) -> (f64, u8) {
     for _ in 0..100 {
         h.run_steps(2);
         if !h.state().render_pending() {

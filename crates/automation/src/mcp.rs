@@ -1,13 +1,13 @@
 //! A Model Context Protocol server over the automation tools.
 //!
-//! **Opt-in only.** Nothing in PdfCraft starts this server on its own: it runs when a user
-//! launches `pdfcraft-cli mcp` (usually by adding that command to their agent's MCP
+//! **Opt-in only.** Nothing in PdfKub starts this server on its own: it runs when a user
+//! launches `pdfkub-cli mcp` (usually by adding that command to their agent's MCP
 //! configuration), and stops when its input closes. It opens no network port; the transport is
 //! newline-delimited JSON-RPC 2.0 over stdin/stdout.
 //!
 //! Implemented: `initialize`, `ping`, `tools/list`, `tools/call`, `resources/list`,
 //! `resources/templates/list`, `resources/read`, and the `notifications/*` the client sends.
-//! Resources expose the open documents read-only: `pdfcraft://doc/{doc}/info` (JSON),
+//! Resources expose the open documents read-only: `pdfkub://doc/{doc}/info` (JSON),
 //! `…/text` (plain text), `…/page/{page}/text` and `…/page/{page}/image` (PNG; `?dpi=` 1–600). Tool failures are reported in the result (`isError: true`) so the agent can read
 //! them; protocol errors use JSON-RPC error codes.
 
@@ -26,10 +26,10 @@ const INVALID_REQUEST: i64 = -32600;
 const METHOD_NOT_FOUND: i64 = -32601;
 const INVALID_PARAMS: i64 = -32602;
 
-const INSTRUCTIONS: &str = "PdfCraft edits PDFs. Open a file with doc_open to get a document id, then inspect \
+const INSTRUCTIONS: &str = "PdfKub edits PDFs. Open a file with doc_open to get a document id, then inspect \
 (doc_info, text_extract, text_find, page_render) or edit it (page_*, doc_set_info). Edits are undoable \
 (edit_undo) and stay in memory until doc_save. Page numbers are 1-based. Open documents are also \
-resources: pdfcraft://doc/{doc}/info, /text, /page/{page}/text and /page/{page}/image.";
+resources: pdfkub://doc/{doc}/info, /text, /page/{page}/text and /page/{page}/image.";
 
 /// Appended to the instructions in compact mode.
 const COMPACT_INSTRUCTIONS: &str = " Only a core set of tools is listed. Every other tool is still available: find it with \
@@ -113,7 +113,7 @@ impl McpServer {
                 Ok(json!({
                     "protocolVersion": version,
                     "capabilities": { "tools": { "listChanged": false }, "resources": { "listChanged": false, "subscribe": false } },
-                    "serverInfo": { "name": "pdfcraft", "title": "PdfCraft", "version": env!("CARGO_PKG_VERSION"), "websiteUrl": pdfcraft_engine::links::APP_PAGE },
+                    "serverInfo": { "name": "pdfkub", "title": "PdfKub", "version": env!("CARGO_PKG_VERSION"), "websiteUrl": pdfcraft_engine::links::GITHUB },
                     "instructions": if self.compact { format!("{INSTRUCTIONS}{COMPACT_INSTRUCTIONS}") } else { INSTRUCTIONS.to_string() },
                 }))
             }
@@ -174,8 +174,8 @@ fn meta_tools() -> [Value; 2] {
     [
         json!({
             "name": TOOL_SEARCH,
-            "title": "Find PdfCraft tools",
-            "description": "Search and list all PdfCraft automation tools, including the core tools, with a one-sentence description each. Filter by query \
+            "title": "Find PdfKub tools",
+            "description": "Search and list all PdfKub automation tools, including the core tools, with a one-sentence description each. Filter by query \
         (words matched against name, title and description) and/or category (the name prefix: doc, page, text, form, …). \
         With name, return that one tool in full, including its input_schema. Run a tool with tool_call.",
             "inputSchema": {
@@ -188,12 +188,12 @@ fn meta_tools() -> [Value; 2] {
                 "required": [],
                 "additionalProperties": false,
             },
-            "annotations": { "title": "Find PdfCraft tools", "readOnlyHint": true, "destructiveHint": false, "openWorldHint": false },
+            "annotations": { "title": "Find PdfKub tools", "readOnlyHint": true, "destructiveHint": false, "openWorldHint": false },
         }),
         json!({
             "name": TOOL_CALL,
-            "title": "Run any PdfCraft tool",
-            "description": "Run any PdfCraft tool by name with its arguments, exactly as if it were called directly. \
+            "title": "Run any PdfKub tool",
+            "description": "Run any PdfKub tool by name with its arguments, exactly as if it were called directly. \
         Find names and argument schemas with tool_search. The result is the tool's own result.",
             "inputSchema": {
                 "type": "object",
@@ -204,7 +204,7 @@ fn meta_tools() -> [Value; 2] {
                 "required": ["name"],
                 "additionalProperties": false,
             },
-            "annotations": { "title": "Run any PdfCraft tool", "readOnlyHint": false, "destructiveHint": true, "openWorldHint": false },
+            "annotations": { "title": "Run any PdfKub tool", "readOnlyHint": false, "destructiveHint": true, "openWorldHint": false },
         }),
     ]
 }
@@ -299,7 +299,7 @@ fn tool_error(message: &str) -> Value {
     json!({ "content": [{ "type": "text", "text": message }], "isError": true })
 }
 
-/// The resource behind a `pdfcraft://` URI.
+/// The resource behind a `pdfkub://` URI.
 #[derive(Debug, PartialEq)]
 enum Resource {
     Info(u64),
@@ -309,7 +309,7 @@ enum Resource {
 }
 
 fn parse_uri(uri: &str) -> Option<Resource> {
-    let rest = uri.strip_prefix("pdfcraft://doc/")?;
+    let rest = uri.strip_prefix("pdfkub://doc/")?;
     let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
     let dpi = query.split('&').find_map(|kv| kv.strip_prefix("dpi=")).and_then(|v| v.parse::<f64>().ok());
     let parts: Vec<&str> = path.split('/').collect();
@@ -325,13 +325,13 @@ fn parse_uri(uri: &str) -> Option<Resource> {
 
 fn resource_templates() -> Value {
     json!([
-        { "uriTemplate": "pdfcraft://doc/{doc}/info", "name": "Document information", "mimeType": "application/json",
+        { "uriTemplate": "pdfkub://doc/{doc}/info", "name": "Document information", "mimeType": "application/json",
           "description": "Metadata, pages, bookmarks, annotations, fields, links, layers, attachments, fonts and security of an open document (as doc_info)." },
-        { "uriTemplate": "pdfcraft://doc/{doc}/text", "name": "Document text", "mimeType": "text/plain",
+        { "uriTemplate": "pdfkub://doc/{doc}/text", "name": "Document text", "mimeType": "text/plain",
           "description": "The text of every page in reading order, each page under a \"Page n\" heading." },
-        { "uriTemplate": "pdfcraft://doc/{doc}/page/{page}/text", "name": "Page text", "mimeType": "text/plain",
+        { "uriTemplate": "pdfkub://doc/{doc}/page/{page}/text", "name": "Page text", "mimeType": "text/plain",
           "description": "The text of one page (1-based) in reading order." },
-        { "uriTemplate": "pdfcraft://doc/{doc}/page/{page}/image{?dpi}", "name": "Page image", "mimeType": "image/png",
+        { "uriTemplate": "pdfkub://doc/{doc}/page/{page}/image{?dpi}", "name": "Page image", "mimeType": "image/png",
           "description": "One page (1-based) rendered to PNG; dpi 1–600, default 96." },
     ])
 }
@@ -345,14 +345,14 @@ impl McpServer {
         let mut out = Vec::new();
         for d in docs.unwrap_or_default() {
             let (id, name) = (d["doc"].as_u64().unwrap_or(0), d["name"].as_str().unwrap_or("document"));
-            out.push(json!({ "uri": format!("pdfcraft://doc/{id}/info"), "name": format!("{name} (information)"), "mimeType": "application/json" }));
-            out.push(json!({ "uri": format!("pdfcraft://doc/{id}/text"), "name": format!("{name} (text)"), "mimeType": "text/plain" }));
+            out.push(json!({ "uri": format!("pdfkub://doc/{id}/info"), "name": format!("{name} (information)"), "mimeType": "application/json" }));
+            out.push(json!({ "uri": format!("pdfkub://doc/{id}/text"), "name": format!("{name} (text)"), "mimeType": "text/plain" }));
             // Pages are listed for short documents; longer ones use the templates.
             let pages = d["pages"].as_u64().unwrap_or(0);
             if pages <= 50 {
                 for p in 1..=pages {
                     out.push(
-                        json!({ "uri": format!("pdfcraft://doc/{id}/page/{p}/image"), "name": format!("{name}, page {p}"), "mimeType": "image/png" }),
+                        json!({ "uri": format!("pdfkub://doc/{id}/page/{p}/image"), "name": format!("{name}, page {p}"), "mimeType": "image/png" }),
                     );
                 }
             }
@@ -459,10 +459,10 @@ mod tests {
 
     #[test]
     fn resource_uris_parse() {
-        assert_eq!(parse_uri("pdfcraft://doc/3/info"), Some(Resource::Info(3)));
-        assert_eq!(parse_uri("pdfcraft://doc/3/page/2/image?dpi=36"), Some(Resource::PageImage(3, 2, Some(36.0))));
-        assert_eq!(parse_uri("pdfcraft://doc/3/page/2/text"), Some(Resource::PageText(3, 2)));
-        assert_eq!(parse_uri("pdfcraft://doc/x/info"), None);
+        assert_eq!(parse_uri("pdfkub://doc/3/info"), Some(Resource::Info(3)));
+        assert_eq!(parse_uri("pdfkub://doc/3/page/2/image?dpi=36"), Some(Resource::PageImage(3, 2, Some(36.0))));
+        assert_eq!(parse_uri("pdfkub://doc/3/page/2/text"), Some(Resource::PageText(3, 2)));
+        assert_eq!(parse_uri("pdfkub://doc/x/info"), None);
         assert_eq!(parse_uri("file:///etc/passwd"), None);
     }
 }

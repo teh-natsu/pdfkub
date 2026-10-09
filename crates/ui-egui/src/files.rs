@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use pdfcraft_engine::{DocId, Edit, SplitBy};
 
-use crate::PdfCraftApp;
+use crate::PdfKubApp;
 
 /// Why files were picked.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,7 +55,7 @@ impl FilePurpose {
 /// The document a pick edits, as it was when the picker opened. Page positions captured then
 /// are only valid while it is unchanged, and the pick acts on the active document; so a pick
 /// that arrives after the document was edited, or stopped being the active one, is refused
-/// (see [`PdfCraftApp::still_pick_target`]).
+/// (see [`PdfKubApp::still_pick_target`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PickTarget {
     doc: DocId,
@@ -63,7 +63,7 @@ pub struct PickTarget {
 }
 
 /// Files picked asynchronously in a browser, waiting for the next frame (see
-/// [`PdfCraftApp::file_request`]).
+/// [`PdfKubApp::file_request`]).
 #[derive(Debug)]
 pub struct FileRequest {
     purpose: FilePurpose,
@@ -90,7 +90,7 @@ impl Default for SplitDraft {
     }
 }
 
-/// Acrobat's Split by: number of pages, file size, top-level bookmarks (and PdfCraft's
+/// Acrobat's Split by: number of pages, file size, top-level bookmarks (and PdfKub's
 /// before-selected-pages).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SplitMode {
@@ -136,7 +136,7 @@ impl Default for RotateDraft {
     }
 }
 
-impl PdfCraftApp {
+impl PdfKubApp {
     /// Ask for files to add to the Combine files list (its Add files… button).
     pub fn combine_dialog(&mut self) {
         self.pick_files(FilePurpose::Combine, true);
@@ -577,7 +577,7 @@ pub(crate) fn strip_pdf(name: &str) -> &str {
     name.strip_suffix(".pdf").or_else(|| name.strip_suffix(".PDF")).unwrap_or(name)
 }
 
-impl PdfCraftApp {
+impl PdfKubApp {
     /// Comments ▸ Import comments / Prepare a form ▸ Import data: XFDF, FDF, XML, CSV or text.
     pub fn import_data_dialog(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]

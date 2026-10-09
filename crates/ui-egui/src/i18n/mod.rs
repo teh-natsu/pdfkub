@@ -655,13 +655,13 @@ mod tests {
 
     #[test]
     fn language_persists_and_invalid_input_keeps_current_language() {
-        let mut app = crate::PdfCraftApp::default();
+        let mut app = crate::PdfKubApp::default();
         assert_eq!(app.language, AUTO);
         app.set_option("language", "JA").unwrap();
         assert_eq!(app.language, "ja");
         assert!(app.set_option("language", "xx").is_err());
         assert_eq!(app.language, "ja");
-        let mut restored = crate::PdfCraftApp::default();
+        let mut restored = crate::PdfKubApp::default();
         restored.restore(&app.persist());
         assert_eq!(restored.language, "ja");
         restored.restore(r#"{"language":"xx"}"#);
@@ -669,7 +669,7 @@ mod tests {
         app.set_option("language", AUTO).unwrap();
         assert_eq!(app.language, AUTO);
         // Settings written before the system-locale default (no key) follow the system.
-        let mut legacy = crate::PdfCraftApp::default();
+        let mut legacy = crate::PdfKubApp::default();
         legacy.restore("{}");
         assert_eq!(legacy.language, AUTO);
     }
@@ -687,10 +687,10 @@ mod tests {
         assert_eq!(tr(pt, "Save as…"), "Salvar como…");
         assert_eq!(tr(pt, "Arquivo do usuário.pdf"), "Arquivo do usuário.pdf");
         assert_eq!((0..=3).map(|n| (pt.0.plural)(n)).collect::<Vec<_>>(), [0, 0, 1, 1]);
-        let mut app = crate::PdfCraftApp::default();
+        let mut app = crate::PdfKubApp::default();
         app.set_option("language", "pt-br").unwrap();
         assert_eq!(app.language, "pt-br");
-        let mut restored = crate::PdfCraftApp::default();
+        let mut restored = crate::PdfKubApp::default();
         restored.restore(&app.persist());
         assert_eq!(restored.language, "pt-br");
     }
@@ -708,10 +708,10 @@ mod tests {
         assert_eq!(tr(es, "Informe del usuario.pdf"), "Informe del usuario.pdf");
         assert_eq!(trn(es, 1, "{n} page", "{n} pages"), "1 página");
         assert_eq!(trn(es, 3, "{n} page", "{n} pages"), "3 páginas");
-        let mut app = crate::PdfCraftApp::default();
+        let mut app = crate::PdfKubApp::default();
         app.set_option("language", "es").unwrap();
         assert_eq!(app.language, "es");
-        let mut restored = crate::PdfCraftApp::default();
+        let mut restored = crate::PdfKubApp::default();
         restored.restore(&app.persist());
         assert_eq!(restored.language, "es");
     }
@@ -746,10 +746,10 @@ mod tests {
         assert_eq!(tr(te, "నివేదిక.pdf"), "నివేదిక.pdf");
         assert_eq!(trn(te, 1, "{n} page", "{n} pages"), "1 పేజీ");
         assert_eq!(trn(te, 3, "{n} page", "{n} pages"), "3 పేజీలు");
-        let mut app = crate::PdfCraftApp::default();
+        let mut app = crate::PdfKubApp::default();
         app.set_option("language", "te").unwrap();
         assert_eq!(app.language, "te");
-        let mut restored = crate::PdfCraftApp::default();
+        let mut restored = crate::PdfKubApp::default();
         restored.restore(&app.persist());
         assert_eq!(restored.language, "te");
     }
@@ -846,11 +846,11 @@ mod tests {
             assert!(!e.translation.contains("..."), "use … rather than three dots: {:?}", e.translation);
             assert_eq!(e.translation.trim(), e.translation, "stray whitespace: {:?}", e.translation);
         }
-        let mut app = crate::PdfCraftApp::default();
+        let mut app = crate::PdfKubApp::default();
         app.set_option("language", "cs").unwrap();
         assert!(app.set_option("language", "cz").is_err());
         assert_eq!(app.language, "cs");
-        let mut restored = crate::PdfCraftApp::default();
+        let mut restored = crate::PdfKubApp::default();
         restored.restore(&app.persist());
         assert_eq!(restored.language, "cs");
     }
@@ -1026,10 +1026,10 @@ mod tests {
         assert_eq!(trn(fr, 2, "{n} page", "{n} pages"), "2 pages");
         assert_eq!(trn(fr, 1, "{n} field", "{n} fields"), "1 champ");
         assert_eq!(trn(fr, 2, "{n} field", "{n} fields"), "2 champs");
-        let mut app = crate::PdfCraftApp::default();
+        let mut app = crate::PdfKubApp::default();
         app.set_option("language", "fr").unwrap();
         assert_eq!(app.language, "fr");
-        let mut restored = crate::PdfCraftApp::default();
+        let mut restored = crate::PdfKubApp::default();
         restored.restore(&app.persist());
         assert_eq!(restored.language, "fr");
     }
@@ -1137,10 +1137,10 @@ mod tests {
         assert_eq!(trn(ru, 1, "{n} field", "{n} fields"), "1 поле");
         assert_eq!(trn(ru, 2, "{n} field", "{n} fields"), "2 поля");
         assert_eq!(trn(ru, 5, "{n} field", "{n} fields"), "5 полей");
-        let mut app = crate::PdfCraftApp::default();
+        let mut app = crate::PdfKubApp::default();
         app.set_option("language", "ru").unwrap();
         assert_eq!(app.language, "ru");
-        let mut restored = crate::PdfCraftApp::default();
+        let mut restored = crate::PdfKubApp::default();
         restored.restore(&app.persist());
         assert_eq!(restored.language, "ru");
     }

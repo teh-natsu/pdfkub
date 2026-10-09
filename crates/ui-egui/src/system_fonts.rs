@@ -3,7 +3,7 @@
 //! The embedded faces (Inter, egui's defaults, craft-fonts) come first in every family; this one
 //! only draws characters none of them has, such as an Arabic file name in a build without
 //! craft-fonts. It is read at runtime and never embedded or shipped (AGENTS.md §1.4), and
-//! `PDFCRAFT_SYSTEM_FONTS=0` turns it off (published screenshots do).
+//! `PDFKUB_SYSTEM_FONTS=0` turns it off (published screenshots do).
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
@@ -24,7 +24,7 @@ pub fn fallback() -> Option<Arc<FontData>> {
 }
 
 fn load() -> Option<Arc<FontData>> {
-    if std::env::var_os("PDFCRAFT_SYSTEM_FONTS").is_some_and(|v| v == "0") {
+    if std::env::var_os("PDFKUB_SYSTEM_FONTS").is_some_and(|v| v == "0") {
         return None;
     }
     candidates().iter().find_map(|path| read(path))

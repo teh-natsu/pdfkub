@@ -18,9 +18,9 @@ pub fn target_dir() -> PathBuf {
     std::env::var_os("CARGO_TARGET_DIR").map_or_else(|| root().join("target"), |d| root().join(d))
 }
 
-/// The release `pdfcraft-cli` that `cargo build --release -p pdfcraft-cli` produced.
+/// The release `pdfkub-cli` that `cargo build --release -p pdfkub-cli` produced.
 pub fn release_cli() -> PathBuf {
-    target_dir().join("release").join(format!("pdfcraft-cli{}", std::env::consts::EXE_SUFFIX))
+    target_dir().join("release").join(format!("pdfkub-cli{}", std::env::consts::EXE_SUFFIX))
 }
 
 fn cargo() -> Command {
@@ -157,7 +157,7 @@ pub fn corpus(_: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// `cargo xtask check [--update-baseline]`: run `pdfcraft-cli check` over the corpus and compare
+/// `cargo xtask check [--update-baseline]`: run `pdfkub-cli check` over the corpus and compare
 /// with `xtask/baselines/<corpus>.json` (the list of files known not to open/render cleanly).
 /// Fails on any crash, and on any file that regressed from `ok`.
 pub fn check(args: &[String]) -> anyhow::Result<()> {
@@ -166,11 +166,11 @@ pub fn check(args: &[String]) -> anyhow::Result<()> {
     if !corpus.is_dir() {
         bail!("corpus missing: run `cargo xtask corpus` first");
     }
-    run_args(&["build", "--release", "-p", "pdfcraft-cli"])?;
+    run_args(&["build", "--release", "-p", "pdfkub-cli"])?;
     let report = target_dir().join("check-pdfjs.json");
     let mut c = Command::new(release_cli());
     c.args(["check"]).arg(&corpus).args(["--timeout", "20", "--dpi", "36", "--json"]).arg(&report);
-    run(c, "pdfcraft-cli check corpus/pdfjs")?;
+    run(c, "pdfkub-cli check corpus/pdfjs")?;
     let results: Vec<serde_json::Value> = serde_json::from_str(&std::fs::read_to_string(&report)?)?;
     let name =
         |v: &serde_json::Value| Path::new(v["file"].as_str().unwrap_or("")).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
@@ -208,7 +208,7 @@ pub fn check(args: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// `cargo xtask text-oracle [--limit N]`: compare `pdfcraft-cli text` with poppler's `pdftotext`
+/// `cargo xtask text-oracle [--limit N]`: compare `pdfkub-cli text` with poppler's `pdftotext`
 /// (external oracle process, never linked) over the corpus. Reports word-level F1 per file and the
 /// median. Plan target (M2): median ≥ 0.97.
 pub fn text_oracle(args: &[String]) -> anyhow::Result<()> {
@@ -216,7 +216,7 @@ pub fn text_oracle(args: &[String]) -> anyhow::Result<()> {
     if Command::new("pdftotext").arg("-v").output().is_err() {
         bail!("pdftotext (poppler) not found; install it to run the text oracle (brew install poppler / apt install poppler-utils)");
     }
-    run_args(&["build", "--release", "-p", "pdfcraft-cli"])?;
+    run_args(&["build", "--release", "-p", "pdfkub-cli"])?;
     let corpus = root().join("corpus/pdfjs/test/pdfs");
     let mut files: Vec<PathBuf> =
         std::fs::read_dir(&corpus)?.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == "pdf")).collect();
@@ -313,9 +313,9 @@ mod tests {
     // The bundle id must match the app id the binary uses; renames change both (#174).
     #[test]
     fn macos_bundle_id_matches_app_id() {
-        assert!(read("packaging/macos/Info.plist.in").contains("<string>ai.storyteller.pdfcraft</string>"), "bundle id");
-        let main = read("apps/pdfcraft/src/main.rs");
-        assert!(main.contains(r#"const APP_ID: &str = "ai.storyteller.pdfcraft""#), "APP_ID drifted from the bundle id");
+        assert!(read("packaging/macos/Info.plist.in").contains("<string>io.github.teh_natsu.pdfkub</string>"), "bundle id");
+        let main = read("apps/pdfkub/src/main.rs");
+        assert!(main.contains(r#"const APP_ID: &str = "io.github.teh_natsu.pdfkub""#), "APP_ID drifted from the bundle id");
     }
 
     // Committed file with `<!-- -->` comments stripped, so a commented-out claim cannot pass.

@@ -2,12 +2,12 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::{PdfCraftApp, QuickTool};
+use pdfcraft_ui_egui::{PdfKubApp, QuickTool};
 
 #[test]
 fn choosing_and_placing_stamps() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("form.pdf", None, include_bytes!("data/form.pdf").to_vec()).unwrap();
         app.set_option("zoom", "150").unwrap();
         app
@@ -38,7 +38,7 @@ fn choosing_and_placing_stamps() {
         h.run_steps(2);
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
-    if let Ok(dir) = std::env::var("PDFCRAFT_SHOTS") {
+    if let Ok(dir) = std::env::var("PDFKUB_SHOTS") {
         h.render().unwrap().save(format!("{dir}/stamps.png")).unwrap();
     }
 }
@@ -46,7 +46,7 @@ fn choosing_and_placing_stamps() {
 #[test]
 fn creating_placing_and_keeping_custom_stamps() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("form.pdf", None, include_bytes!("data/form.pdf").to_vec()).unwrap();
         app.set_option("zoom", "150").unwrap();
         app
@@ -87,7 +87,7 @@ fn creating_placing_and_keeping_custom_stamps() {
     assert_eq!(doc.can_undo(), Some("Add stamp"));
     // The library is kept with the app's settings.
     let saved = s.persist();
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfKubApp::new();
     again.restore(&saved);
     assert_eq!(again.custom_stamps.len(), 1);
     assert_eq!((again.custom_stamps[0].category.as_str(), again.custom_stamps[0].name.as_str()), ("Company", "logo"));

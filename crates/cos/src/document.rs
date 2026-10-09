@@ -931,7 +931,7 @@ fn generated_id(seed: &[u8; 32]) -> Vec<u8> {
     let mut out = Vec::new();
     for i in 0..2u8 {
         let mut h = std::collections::hash_map::DefaultHasher::new();
-        (seed, i, b"pdfcraft id").hash(&mut h);
+        (seed, i, b"pdfkub id").hash(&mut h);
         out.extend_from_slice(&h.finish().to_be_bytes());
     }
     out

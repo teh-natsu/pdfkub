@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=PdfKub
+GenericName=PDF Editor
+Comment=Read, organize, combine, split and secure PDFs
+Exec=pdfkub %U
+TryExec=pdfkub
+Icon=io.github.teh_natsu.pdfkub
+Terminal=false
+StartupNotify=true
+StartupWMClass=pdfkub
+Categories=Office;Viewer;
+Keywords=pdf;viewer;editor;annotate;sign;forms;merge;split;
+MimeType=application/pdf;

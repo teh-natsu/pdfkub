@@ -1,10 +1,10 @@
-//! pdfcraft-automation — agent control for PdfCraft (architecture §13).
+//! pdfcraft-automation — agent control for PdfKub (architecture §13).
 //!
 //! - **Layer:** L7. Headless: depends on the engine, never on a UI toolkit.
 //! - [`Automation`] is a tool set over an engine [`Session`]: open, inspect, render, extract and
 //!   find text, edit pages and metadata, undo/redo, save, combine, extract and split. Every tool
 //!   has a JSON Schema ([`tools`]) and takes and returns JSON, so the same table drives the MCP
-//!   server ([`mcp`]), `pdfcraft-cli run` and (later) the UI control channel.
+//!   server ([`mcp`]), `pdfkub-cli run` and (later) the UI control channel.
 //! - Pages are **1-based** in every tool, as people number them. Rectangles are in PDF points
 //!   with the origin at the top-left of the displayed page.
 //! - An optional root directory confines every path a tool reads or writes.
@@ -79,7 +79,7 @@ const MAX_DPI: f64 = 600.0;
 /// Page texts of one document version: (the working bytes, one slot per page).
 type TextCache = (Arc<Vec<u8>>, Vec<Option<Arc<PageText>>>);
 
-/// A headless PdfCraft session driven by tool calls.
+/// A headless PdfKub session driven by tool calls.
 pub struct Automation {
     session: Session,
     root: Option<PathBuf>,
@@ -120,7 +120,7 @@ impl Automation {
         &self.session
     }
 
-    /// Save `bytes` that a caller writes on the session's behalf, such as `pdfcraft-cli run`
+    /// Save `bytes` that a caller writes on the session's behalf, such as `pdfkub-cli run`
     /// saving a rendered page. With a root, it is confined like a tool's own output (a relative
     /// path resolves inside it) and written atomically. Without one, the path is written as
     /// given, so `/dev/stdout` and the like still work. Returns where the file went.
@@ -1665,7 +1665,7 @@ fn info(d: &Document) -> Value {
         "tagged": i.tagged,
         "has_javascript": i.has_javascript,
         // XFA forms: "static" (the PDF's own fields work; the XFA data is ignored) or "dynamic"
-        // (laid out from the template by PdfCraft, see xfa_layout; placeholder pages when that failed).
+        // (laid out from the template by PdfKub, see xfa_layout; placeholder pages when that failed).
         "xfa": i.xfa.map(|x| match x { pdfcraft_render::Xfa::Static => "static", pdfcraft_render::Xfa::Dynamic => "dynamic" }),
         "xfa_layout": d.xfa.as_ref().map(|x| json!({ "pages": x.pages, "fields": x.fields, "warnings": x.warnings })),
         // What was rewritten from, or could not be written to, the XFA data.
@@ -1894,14 +1894,14 @@ mod tests {
 
     /// A fresh, empty folder for one staging test.
     fn staging_dir(test: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-staging-{}-{test}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("pdfkub-staging-{}-{test}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
 
     fn staged(dir: &Path, suffix: u64) -> PathBuf {
-        dir.join(format!(".out.pdf.{suffix:016x}.pdfcraft-tmp"))
+        dir.join(format!(".out.pdf.{suffix:016x}.pdfkub-tmp"))
     }
 
     fn read(p: &Path) -> String {

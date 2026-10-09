@@ -2,12 +2,12 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use pdfcraft_ui_egui::PdfKubApp;
 use pdfcraft_ui_egui::theme::{ThemeKind, ThemePreference, Tokens};
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfKubApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.set_option("language", "en").unwrap();
         app
     });
@@ -16,7 +16,7 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn assert_theme(h: &Harness<'static, PdfCraftApp>, preference: ThemePreference, kind: ThemeKind) {
+fn assert_theme(h: &Harness<'static, PdfKubApp>, preference: ThemePreference, kind: ThemeKind) {
     assert_eq!(h.state().theme_preference, preference);
     assert_eq!(h.state().theme, kind);
     assert_eq!(Tokens::get(&h.ctx).kind, kind);
@@ -24,7 +24,7 @@ fn assert_theme(h: &Harness<'static, PdfCraftApp>, preference: ThemePreference, 
     assert_eq!(h.ctx.theme(), if kind == ThemeKind::Dark { egui::Theme::Dark } else { egui::Theme::Light });
 }
 
-fn open_toolbar(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+fn open_toolbar(h: &mut Harness<'static, PdfKubApp>, label: &str) {
     h.get_by_label(&format!("Display theme: {label}")).click();
     h.run_steps(3);
     for choice in ["Use system setting", "Light gray", "Dark gray"] {
@@ -32,7 +32,7 @@ fn open_toolbar(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
     }
 }
 
-fn open_view_menu(h: &mut Harness<'static, PdfCraftApp>) {
+fn open_view_menu(h: &mut Harness<'static, PdfKubApp>) {
     h.get_by_label("Menu").click();
     h.run_steps(2);
     h.get_by_label("View ⏵").hover();
@@ -85,14 +85,14 @@ fn toolbar_and_view_menu_share_three_state_preferences() {
 #[test]
 fn saved_preferences_restore_with_legacy_light_dark_settings() {
     for (value, preference) in [("light", ThemePreference::Light), ("dark", ThemePreference::Dark), ("system", ThemePreference::System)] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.set_option("theme", value).unwrap();
         let saved = app.persist();
-        let mut restored = PdfCraftApp::new();
+        let mut restored = PdfKubApp::new();
         restored.restore(&saved);
         assert_eq!(restored.theme_preference, preference);
     }
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     app.restore(r#"{"theme":"Dark"}"#);
     assert_eq!(app.theme_preference, ThemePreference::Dark);
     assert_eq!(app.theme, ThemeKind::Dark);
@@ -106,7 +106,7 @@ fn saved_preferences_restore_with_legacy_light_dark_settings() {
 
 #[test]
 fn commands_and_options_apply_before_the_first_frame() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     app.run_command("view.theme.dark");
     assert_eq!(app.theme_preference, ThemePreference::Dark);
     assert_eq!(app.theme, ThemeKind::Dark);

@@ -1,6 +1,6 @@
 //! Export a PDF ▸ Image ▸ Export all images, and Edit ▸ Save image as: the images that pages
 //! use, as files. JPEG images are written unchanged; other images are decoded and written as
-//! PNG (with their soft mask as alpha). Images PdfCraft can't decode yet (JPEG 2000, JBIG2,
+//! PNG (with their soft mask as alpha). Images PdfKub can't decode yet (JPEG 2000, JBIG2,
 //! CCITT, separations) are reported, never silently left out.
 
 use std::collections::HashSet;

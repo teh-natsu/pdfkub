@@ -401,7 +401,7 @@ trailer << /Root 1 0 R >>
 #[ignore = "creates a temporary macOS keychain; run with --ignored"]
 fn signing_with_keychain_identities() {
     use std::process::Command;
-    let dir = std::env::temp_dir().join(format!("pdfcraft-keychain-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("pdfkub-keychain-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let kc = dir.join("test.keychain-db");
     let sec = |args: &[&str]| Command::new("security").args(args).output().unwrap();
@@ -675,7 +675,7 @@ fn signing_with_windows_store_identities() {
     getrandom::fill(&mut random).unwrap();
     let unique: String = random.iter().map(|b| format!("{b:02x}")).collect();
     for algorithm in ["RSA", "ECDSA_nistP256", "ECDSA_nistP384"] {
-        let name = format!("PdfCraft Test {unique} {algorithm}");
+        let name = format!("PdfKub Test {unique} {algorithm}");
         let rsa = if algorithm == "RSA" { "-KeyLength 2048" } else { "" };
         let out = powershell(&format!(
             "$ErrorActionPreference='Stop'; $c=New-SelfSignedCertificate -Subject 'CN={name}' -CertStoreLocation 'Cert:\\CurrentUser\\My' -Provider 'Microsoft Software Key Storage Provider' -KeyAlgorithm {algorithm} {rsa} -KeyUsage DigitalSignature -KeyExportPolicy NonExportable; $c.Thumbprint"

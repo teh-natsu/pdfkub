@@ -131,7 +131,7 @@ fn system_fallback_fills_missing_scripts() {
     assert!(!theme::font_definitions().font_data.contains_key(theme::SYSTEM_FALLBACK));
     let defs = theme::installed_font_definitions(false);
     if !defs.font_data.contains_key(theme::SYSTEM_FALLBACK) {
-        eprintln!("skipping system_fallback_fills_missing_scripts: no installed fallback font (or PDFCRAFT_SYSTEM_FONTS=0)");
+        eprintln!("skipping system_fallback_fills_missing_scripts: no installed fallback font (or PDFKUB_SYSTEM_FONTS=0)");
         assert!(defs.families.values().all(|stack| !stack.iter().any(|n| n == theme::SYSTEM_FALLBACK)));
         return;
     }
@@ -142,7 +142,7 @@ fn system_fallback_fills_missing_scripts() {
     let mut fonts = Fonts::new(TextOptions::default(), defs);
     for id in families() {
         assert!(fonts.has_glyphs(&id, ARABIC), "{id:?} lacks {ARABIC}");
-        assert!(fonts.has_glyphs(&id, "PdfCraft"), "{id:?}");
+        assert!(fonts.has_glyphs(&id, "PdfKub"), "{id:?}");
     }
     assert!(layout_widths(&mut fonts, ARABIC).iter().all(|w| w.is_finite() && *w > 0.0));
 }
@@ -153,11 +153,11 @@ fn system_fallback_fills_missing_scripts() {
 fn ui_fonts_work_without_craft_fonts() {
     let mut fonts = Fonts::new(TextOptions::default(), theme::font_definitions());
     for id in families() {
-        assert!(fonts.has_glyphs(&id, "PdfCraft"), "{id:?}");
+        assert!(fonts.has_glyphs(&id, "PdfKub"), "{id:?}");
         assert_eq!(fonts.has_glyphs(&id, JAPANESE), !pdfcraft_fonts::ui_japanese_fonts().is_empty(), "{id:?}");
     }
     assert!(layout_widths(&mut fonts, JAPANESE).iter().all(|w| w.is_finite() && *w > 0.0));
-    assert!(layout_widths(&mut fonts, "PdfCraft").iter().all(|w| *w > 20.0));
+    assert!(layout_widths(&mut fonts, "PdfKub").iter().all(|w| *w > 20.0));
     let ctx = egui::Context::default();
     theme::install_fonts(&ctx);
 }

@@ -4,7 +4,7 @@ use egui::{Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use pdfcraft_ui_egui::fill_sign::{FillTool, SavedSig};
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp, QuickTool};
+use pdfcraft_ui_egui::{Dialog, PdfKubApp, QuickTool};
 
 const FIXTURE: &[u8] = b"%PDF-1.7
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
@@ -13,14 +13,14 @@ const FIXTURE: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfKubApp> {
     harness_bytes(FIXTURE)
 }
 
-fn harness_bytes(fixture: &[u8]) -> Harness<'static, PdfCraftApp> {
+fn harness_bytes(fixture: &[u8]) -> Harness<'static, PdfKubApp> {
     let fixture = fixture.to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("form.pdf", None, fixture.clone()).unwrap();
         app.set_option("left", "closed").unwrap();
         app.set_option("zoom", "150").unwrap();
@@ -31,7 +31,7 @@ fn harness_bytes(fixture: &[u8]) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn at(h: &Harness<'static, PdfCraftApp>, x: f32, y: f32) -> Pos2 {
+fn at(h: &Harness<'static, PdfKubApp>, x: f32, y: f32) -> Pos2 {
     let s = h.state();
     let page = &s.session.get(s.views[0].id).unwrap().info.pages[0];
     let xf = pdfcraft_ui_egui::canvas::PageXform {
@@ -44,7 +44,7 @@ fn at(h: &Harness<'static, PdfCraftApp>, x: f32, y: f32) -> Pos2 {
     xf.norm_to_screen(p[0] / xf.pw, p[1] / xf.ph)
 }
 
-fn click(h: &mut Harness<'static, PdfCraftApp>, x: f32, y: f32) {
+fn click(h: &mut Harness<'static, PdfKubApp>, x: f32, y: f32) {
     let p = at(h, x, y);
     h.hover_at(p);
     h.run_steps(1);
@@ -54,7 +54,7 @@ fn click(h: &mut Harness<'static, PdfCraftApp>, x: f32, y: f32) {
     h.run_steps(3);
 }
 
-fn items(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, Option<String>)> {
+fn items(h: &Harness<'static, PdfKubApp>) -> Vec<(String, Option<String>)> {
     let s = h.state();
     let mut v: Vec<_> = s.session.get(s.views[0].id).unwrap().info.annotations.iter().map(|a| (a.subtype.clone(), a.contents.clone())).collect();
     v.sort();
@@ -62,7 +62,7 @@ fn items(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, Option<String>)> {
 }
 
 /// Page rasters arrive from the render worker independently of kittest's virtual frames.
-fn rendered_ink(h: &mut Harness<'static, PdfCraftApp>, x: f32, y: f32) -> image::RgbaImage {
+fn rendered_ink(h: &mut Harness<'static, PdfKubApp>, x: f32, y: f32) -> image::RgbaImage {
     for _ in 0..50 {
         h.run_steps(2);
         let p = at(h, x, y);
@@ -128,7 +128,7 @@ fn signing_draws_a_signature_once_and_places_it() {
     assert_eq!(h.state().views[0].comments.selected, Some((0, 0)));
     // The signature is remembered (persisted with the app's settings).
     let saved = h.state().persist();
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfKubApp::new();
     again.restore(&saved);
     assert!(again.signature.is_some());
 }
@@ -159,7 +159,7 @@ fn typed_signatures_and_initials() {
     assert_eq!(items(&h).iter().filter(|(t, _)| t == "Stamp").count(), 2);
     // Both are remembered.
     let saved = h.state().persist();
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfKubApp::new();
     again.restore(&saved);
     assert_eq!(again.signature, h.state().signature);
     assert_eq!(again.initials, Some(pdfcraft_ui_egui::fill_sign::SavedSig::Typed("GH".into())));
@@ -213,7 +213,7 @@ fn changing_saved_signatures_and_initials_preserves_placed_marks() {
     assert_eq!(h.state().quick_tool, QuickTool::Fill(FillTool::Initials));
     click(&mut h, 40.0, 100.0);
     assert_eq!(items(&h).len(), 3);
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfKubApp::new();
     again.restore(&h.state().persist());
     assert_eq!(again.signature, Some(SavedSig::Typed("Grace Hopper".into())));
     assert_eq!(again.initials, Some(SavedSig::Typed("GH".into())));
@@ -268,7 +268,7 @@ fn saved_signature_cards_remove_and_add_without_changing_the_document() {
     h.run_steps(3);
     assert_eq!(h.state().signature, None);
     assert_eq!(h.state().initials, Some(SavedSig::Typed("AL".into())));
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfKubApp::new();
     again.restore(&h.state().persist());
     assert_eq!(again.signature, None, "removal survives restart");
     h.get_by_label("Add signature").click();
@@ -326,7 +326,7 @@ fn signature_file(test: &str) -> std::path::PathBuf {
     path
 }
 
-fn browse_image(h: &mut Harness<'static, PdfCraftApp>, path: &std::path::Path) {
+fn browse_image(h: &mut Harness<'static, PdfKubApp>, path: &std::path::Path) {
     h.state_mut().pick_override = Some(vec![path.to_string_lossy().into_owned()]);
     h.get_by_label("Browse…").click();
     h.run_steps(3);
@@ -344,7 +344,7 @@ fn image_signatures_and_initials_can_be_imported_placed_and_remembered() {
         assert!(h.state().signature_draft.saved().is_none(), "Apply needs an image");
         browse_image(&mut h, &path);
         assert!(h.state().signature_draft.image.is_some());
-        if !initials && let Ok(dir) = std::env::var("PDFCRAFT_SHOTS") {
+        if !initials && let Ok(dir) = std::env::var("PDFKUB_SHOTS") {
             h.render().unwrap().save(format!("{dir}/image-signature-dialog.png")).unwrap();
         }
         assert_eq!(items(&h).len(), usize::from(initials), "importing doesn't edit the PDF");
@@ -365,7 +365,7 @@ fn image_signatures_and_initials_can_be_imported_placed_and_remembered() {
     assert_eq!(doc.can_undo(), Some("Add initials"));
     let settings = state.persist();
     assert!(!settings.contains(&path.to_string_lossy().to_string()), "only the image is saved, never its source path");
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfKubApp::new();
     again.restore(&settings);
     assert_eq!(again.signature, state.signature);
     assert_eq!(again.initials, state.initials);
@@ -390,7 +390,7 @@ fn image_signatures_and_initials_can_be_imported_placed_and_remembered() {
     h.run_steps(3);
     h.get_by_label("Use signature");
     h.get_by_label("Use initials");
-    if let Ok(dir) = std::env::var("PDFCRAFT_SHOTS") {
+    if let Ok(dir) = std::env::var("PDFKUB_SHOTS") {
         h.render().unwrap().save(format!("{dir}/image-signatures.png")).unwrap();
     }
     std::fs::remove_file(path).unwrap();
@@ -446,7 +446,7 @@ fn image_signature_preview_follows_pointer_at_page_size_with_zoom_and_rotation()
             if document_rotation == 0
                 && view_rotation == 0
                 && y == 250.0
-                && let Ok(dir) = std::env::var("PDFCRAFT_SHOTS")
+                && let Ok(dir) = std::env::var("PDFKUB_SHOTS")
             {
                 pixels.save(format!("{dir}/image-signature-pointer.png")).unwrap();
             }
@@ -473,7 +473,7 @@ fn image_signature_placement_selects_resize_handles_and_requires_reselecting_to_
     assert_eq!(h.state().quick_tool, QuickTool::Select, "signatures place once even when comment tools are pinned");
     assert_eq!(h.state().views[0].comments.selected, Some((0, 0)));
     let placed = rendered_ink(&mut h, 90.0, 250.0);
-    if let Ok(dir) = std::env::var("PDFCRAFT_SHOTS") {
+    if let Ok(dir) = std::env::var("PDFKUB_SHOTS") {
         placed.save(format!("{dir}/image-signature-selected.png")).unwrap();
     }
     // The bottom-right handle is ready without another selection click.
@@ -519,7 +519,7 @@ fn assert_rect(actual: [f32; 4], expected: [f32; 4]) {
     assert!(actual.iter().zip(expected).all(|(a, b)| (*a - b).abs() < 0.001), "{actual:?} != {expected:?}");
 }
 
-fn pixel_at(h: &Harness<'static, PdfCraftApp>, pixels: &image::RgbaImage, x: f32, y: f32) -> [u8; 4] {
+fn pixel_at(h: &Harness<'static, PdfKubApp>, pixels: &image::RgbaImage, x: f32, y: f32) -> [u8; 4] {
     let p = at(h, x, y);
     pixels.get_pixel(p.x.round() as u32, p.y.round() as u32).0
 }
@@ -566,7 +566,7 @@ fn image_signature_live_resize_and_move_preserve_background_and_hide_moving_hand
     assert_eq!(doc.edit_generation(), generation, "pointer frames never edit the document");
     assert_eq!(doc.can_undo(), Some("Add signature"));
     assert_rect(doc.info.annotations[0].rect, [40.0, 234.0, 136.0, 266.0]);
-    if let Ok(dir) = std::env::var("PDFCRAFT_SHOTS") {
+    if let Ok(dir) = std::env::var("PDFKUB_SHOTS") {
         resized.save(format!("{dir}/image-signature-live-resize.png")).unwrap();
     }
     h.drop_at(end);
@@ -597,7 +597,7 @@ fn image_signature_live_resize_and_move_preserve_background_and_hide_moving_hand
         }
         assert_eq!(h.state().session.get(h.state().views[0].id).unwrap().can_undo(), Some("Resize comment"));
         if y == 140.0
-            && let Ok(dir) = std::env::var("PDFCRAFT_SHOTS")
+            && let Ok(dir) = std::env::var("PDFKUB_SHOTS")
         {
             moving.save(format!("{dir}/image-signature-live-move.png")).unwrap();
         }
@@ -612,7 +612,7 @@ fn image_signature_live_resize_and_move_preserve_background_and_hide_moving_hand
     assert_eq!(doc.edit_generation(), generation + 2, "one edit for each completed gesture");
     assert_rect(doc.info.annotations[0].rect, [60.0, 110.0, 240.0, 170.0]);
     assert_eq!(h.state().views[0].comments.selected, Some((0, 0)));
-    if let Ok(dir) = std::env::var("PDFCRAFT_SHOTS") {
+    if let Ok(dir) = std::env::var("PDFKUB_SHOTS") {
         released.save(format!("{dir}/image-signature-move-released.png")).unwrap();
     }
     h.state_mut().undo();
@@ -738,7 +738,7 @@ fn image_signature_corners_restore_original_aspect_after_edge_resize_and_reopen(
         assert_rect(doc.info.annotations[0].rect, [70.0, 170.0, 214.0, 226.0]);
         if hx > 0.0
             && hy < 0.0
-            && let Ok(dir) = std::env::var("PDFCRAFT_SHOTS")
+            && let Ok(dir) = std::env::var("PDFKUB_SHOTS")
         {
             pixels.save(format!("{dir}/image-signature-aspect-corner.png")).unwrap();
         }
@@ -799,7 +799,7 @@ fn image_import_cancel_clear_and_errors_preserve_saved_signatures() {
     h.run_steps(3);
     assert!(h.state().signature_draft.image.is_none());
     // Malformed settings are ignored while legacy typed/drawn values still restore.
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfKubApp::new();
     again.restore(r#"{"signature_text":"Ada","signature_image":{"Image":"bm90IGFuIGltYWdl"},"initials":{"Image":"%%%"}}"#);
     assert_eq!(again.signature, Some(SavedSig::Typed("Ada".into())));
     assert!(again.initials.is_none());

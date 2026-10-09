@@ -277,7 +277,7 @@ fn multiple_rejects_hostile_grids_without_panicking() {
 }
 
 /// Set on the child process when a test runs this test binary as a stand-in for `lp`.
-const STAND_IN_LP: &str = "PDFCRAFT_STAND_IN_LP";
+const STAND_IN_LP: &str = "PDFKUB_STAND_IN_LP";
 
 /// Not a test of its own: [`stand_in_lp`] re-runs this binary with only this test selected, and it
 /// then plays `lp`. It records its arguments and stdin in the folder named by [`STAND_IN_LP`], or,

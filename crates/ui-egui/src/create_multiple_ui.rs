@@ -4,13 +4,13 @@
 
 use std::sync::Arc;
 
-use crate::PdfCraftApp;
+use crate::PdfKubApp;
 
 fn stem(name: &str) -> &str {
     name.rsplit_once('.').map_or(name, |(s, _)| s)
 }
 
-impl PdfCraftApp {
+impl PdfKubApp {
     /// Convert the picked files, join them in the order picked, and open the result in the page
     /// grid. A file that can't be converted is left out (and named in a notice).
     pub(crate) fn stage_create_multiple(&mut self, files: Vec<(String, Vec<u8>)>) {

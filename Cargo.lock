@@ -3446,7 +3446,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdfcraft"
+name = "pdfkub"
 version = "0.4.0"
 dependencies = [
  "eframe",
@@ -3496,7 +3496,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdfcraft-cli"
+name = "pdfkub-cli"
 version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
@@ -3819,7 +3819,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdfcraft-web"
+name = "pdfkub-web"
 version = "0.4.0"
 dependencies = [
  "eframe",

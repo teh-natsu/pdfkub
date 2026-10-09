@@ -96,7 +96,7 @@ fn qpdf_accepts_object_stream_output() {
     assert!(out.status.success());
     let doc = Document::open(Arc::new(fixture())).unwrap();
     let packed = write_full(&doc, &SaveOptions::default()).unwrap();
-    let path = std::env::temp_dir().join(format!("pdfcraft-objstm-{}.pdf", std::process::id()));
+    let path = std::env::temp_dir().join(format!("pdfkub-objstm-{}.pdf", std::process::id()));
     std::fs::write(&path, &packed).unwrap();
     let check = std::process::Command::new("qpdf").arg("--check").arg(&path).output().unwrap();
     let _ = std::fs::remove_file(&path);

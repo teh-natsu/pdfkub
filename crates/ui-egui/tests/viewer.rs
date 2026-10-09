@@ -3,7 +3,7 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp};
+use pdfcraft_ui_egui::{Dialog, PdfKubApp};
 
 /// `n` pages of 200×300; page i says "Page i+1" plus "page" and "Pages" for find tests.
 fn fixture(n: usize) -> Vec<u8> {
@@ -31,9 +31,9 @@ fn fixture(n: usize) -> Vec<u8> {
     out
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfKubApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("a.pdf", None, fixture(5)).unwrap();
         app.open_bytes("b.pdf", None, fixture(2)).unwrap();
         app
@@ -187,7 +187,7 @@ fn two_page_view_steps_a_spread_at_a_time() {
     h.state_mut().views[0].fit = Fit::Width;
     h.state_mut().views[0].layout = PageLayout::TwoUp;
     h.run_steps(4);
-    let step = |h: &mut Harness<'static, PdfCraftApp>, key| {
+    let step = |h: &mut Harness<'static, PdfKubApp>, key| {
         h.key_press_modifiers(Modifiers::COMMAND, key);
         h.run_steps(4);
         h.state().views[0].current
@@ -212,7 +212,7 @@ trailer << /Root 1 0 R >>
 %%EOF"
         .to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         app.open_bytes("damaged.pdf", None, damaged.clone()).unwrap();
         app
     });
@@ -249,13 +249,13 @@ fn initial_view_is_edited_and_honoured_on_open() {
     assert_eq!(s.session.get(id).unwrap().can_undo(), Some("Change document properties"));
     // Opening the saved file follows it.
     let bytes = s.session.save_bytes(id).unwrap();
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     app.open_bytes("again.pdf", None, bytes.to_vec()).unwrap();
     let view = &app.views[0];
     assert_eq!((view.current, view.cover, app.right), (1, true, Some(pdfcraft_ui_egui::RightPanel::Bookmarks)));
 }
 
-fn drag(h: &mut Harness<'static, PdfCraftApp>, a: egui::Pos2, b: egui::Pos2) {
+fn drag(h: &mut Harness<'static, PdfKubApp>, a: egui::Pos2, b: egui::Pos2) {
     h.hover_at(a);
     h.run_steps(1);
     h.drag_at(a);
@@ -314,7 +314,7 @@ fn tab_and_window_show_the_document_title_when_asked() {
     use pdfcraft_engine::Edit;
     let mut h = harness();
     h.run_steps(2);
-    assert_eq!(h.state().window_title, "b.pdf — PdfCraft");
+    assert_eq!(h.state().window_title, "b.pdf — PdfKub");
     {
         let s = h.state_mut();
         let id = s.views[s.active.unwrap()].id;
@@ -324,7 +324,7 @@ fn tab_and_window_show_the_document_title_when_asked() {
         s.session.apply(id, Edit::SetInitialView(Box::new(v))).unwrap();
     }
     h.run_steps(2);
-    assert_eq!(h.state().window_title, "Quarterly report — PdfCraft");
+    assert_eq!(h.state().window_title, "Quarterly report — PdfKub");
     h.get_by_label_contains("Quarterly report");
 }
 
@@ -405,7 +405,7 @@ fn each_document_keeps_its_own_scroll_position() {
     for v in &mut h.state_mut().views {
         v.fit = Fit::Width;
     }
-    let show = |h: &mut Harness<'static, PdfCraftApp>, i: usize| {
+    let show = |h: &mut Harness<'static, PdfKubApp>, i: usize| {
         h.state_mut().active = Some(i);
         h.run_steps(4);
         h.state().views[i].current
@@ -435,7 +435,7 @@ fn arrow_and_page_keys_move_through_a_scrolling_document() {
     h.state_mut().views[0].fit = Fit::Width;
     h.run_steps(4);
     assert_eq!(h.state().views[0].layout, PageLayout::Continuous);
-    let press = |h: &mut Harness<'static, PdfCraftApp>, key, times: usize| {
+    let press = |h: &mut Harness<'static, PdfKubApp>, key, times: usize| {
         for _ in 0..times {
             h.key_press(key);
             h.run_steps(2);
@@ -448,7 +448,7 @@ fn arrow_and_page_keys_move_through_a_scrolling_document() {
     assert_eq!(press(&mut h, Key::ArrowLeft, 1), 1);
     assert_eq!(press(&mut h, Key::ArrowLeft, 1), 0);
     // ↓ scrolls a line at a time, Page Down a screen: count the presses that reach page 2
-    let presses = |h: &mut Harness<'static, PdfCraftApp>, key| {
+    let presses = |h: &mut Harness<'static, PdfKubApp>, key| {
         let mut n = 0;
         while h.state().views[0].current == 0 {
             press(h, key, 1);
@@ -480,7 +480,7 @@ fn v_h_and_space_pick_the_quick_tools() {
     let mut h = harness();
     h.state_mut().active = Some(0);
     h.run_steps(2);
-    let press = |h: &mut Harness<'static, PdfCraftApp>, key| {
+    let press = |h: &mut Harness<'static, PdfKubApp>, key| {
         h.key_press(key);
         h.run_steps(2);
         h.state().quick_tool
@@ -558,7 +558,7 @@ fn page_down_steps_every_spread_when_several_fit_on_screen() {
     for fit in [Fit::Width, Fit::Page, Fit::Height] {
         let bytes = sized_fixture(&sizes);
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfKubApp::new();
             app.open_bytes("book.pdf", None, bytes).unwrap();
             app
         });

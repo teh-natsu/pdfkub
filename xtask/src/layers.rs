@@ -27,7 +27,7 @@ impl Class {
     }
 }
 
-/// Every workspace crate (package name without the `pdfcraft-` prefix) and its layer.
+/// Every workspace crate (package name without the `pdfkub-` prefix) and its layer.
 pub const TABLE: &[(&str, Class)] = &[
     // L0 foundation (standalone, publishable)
     ("geom", Class::Standalone(0)),
@@ -84,7 +84,7 @@ pub const TABLE: &[(&str, Class)] = &[
     ("testkit", Class::Testkit),
     ("oracle", Class::Testkit),
     // L8 apps + tooling
-    ("pdfcraft", Class::Exempt),
+    ("pdfkub", Class::Exempt),
     ("cli", Class::Exempt),
     ("web", Class::Exempt),
     ("xtask", Class::Exempt),
@@ -110,7 +110,7 @@ pub const UI_CRATES: &[&str] = &["egui", "eframe", "winit", "egui_kittest", "egu
 pub const UI_MIN_LAYER: u8 = 7;
 
 pub fn short_name(pkg: &str) -> &str {
-    pkg.strip_prefix("pdfcraft-").unwrap_or(pkg)
+    pkg.strip_prefix("pdfkub-").unwrap_or(pkg)
 }
 
 pub fn classify(pkg: &str) -> Option<Class> {
@@ -274,7 +274,7 @@ mod tests {
             c("pdfcraft-render", &[("hayro", Normal, false), ("lopdf", Normal, false)]),
             c("pdfcraft-engine", &[("pdfcraft-render", Normal, true)]),
             c("pdfcraft-ui-egui", &[("pdfcraft-engine", Normal, true), ("egui", Normal, false), ("egui_kittest", Dev, false)]),
-            c("pdfcraft", &[("pdfcraft-ui-egui", Normal, true)]),
+            c("pdfkub", &[("pdfcraft-ui-egui", Normal, true)]),
         ];
         assert!(check(&g).is_empty(), "{:?}", check(&g));
     }
@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn cos_may_use_only_its_listed_foundation() {
         assert!(check(&[c("pdfcraft-cos", &[("pdfcraft-filters", Normal, true), ("pdfcraft-crypt", Normal, true)])]).is_empty());
-        let v = check(&[c("pdfcraft-cos", &[("pdfcraft-arlington", Normal, true)])]);
+        let v = check(&[c("pdfcraft-cos", &[("pdfkub-arlington", Normal, true)])]);
         assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]));
         let v = check(&[c("pdfcraft-filters", &[("pdfcraft-geom", Normal, true)])]);
         assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]));
@@ -314,22 +314,22 @@ mod tests {
 
     #[test]
     fn test_support_only_as_dev_dependency() {
-        let v = check(&[c("pdfcraft-cos", &[("pdfcraft-testkit", Normal, true)])]);
+        let v = check(&[c("pdfcraft-cos", &[("pdfkub-testkit", Normal, true)])]);
         assert!(!v.is_empty());
-        assert!(check(&[c("pdfcraft-render", &[("pdfcraft-oracle", Dev, true)])]).is_empty());
-        let v = check(&[c("pdfcraft-render", &[("pdfcraft-oracle", Normal, true)])]);
+        assert!(check(&[c("pdfcraft-render", &[("pdfkub-oracle", Dev, true)])]).is_empty());
+        let v = check(&[c("pdfcraft-render", &[("pdfkub-oracle", Normal, true)])]);
         assert!(matches!(v[..], [Violation::TestkitAsNormalDep { .. }]));
     }
 
     #[test]
     fn unregistered_crate_is_error() {
-        let v = check(&[c("pdfcraft-mystery", &[])]);
-        assert!(matches!(&v[..], [Violation::Unregistered { krate }] if krate == "pdfcraft-mystery"));
+        let v = check(&[c("pdfkub-mystery", &[])]);
+        assert!(matches!(&v[..], [Violation::Unregistered { krate }] if krate == "pdfkub-mystery"));
     }
 
     #[test]
     fn apps_exempt() {
-        for app in ["pdfcraft", "pdfcraft-cli", "pdfcraft-web", "xtask"] {
+        for app in ["pdfkub", "pdfkub-cli", "pdfkub-web", "xtask"] {
             assert!(check(&[c(app, &[("egui", Normal, false), ("pdfcraft-ui-egui", Normal, true)])]).is_empty());
         }
     }

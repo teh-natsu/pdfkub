@@ -9,7 +9,7 @@ Comments (annotations), ISO 32000-2 §12.5. Layer L3, depends only on `pdfcraft-
   line and arrow (`Line` with `/LE`), freehand drawing (`Ink`) and text box (`FreeText`).
 - **Appearance streams** (`appearance::build`) generated from the annotation dictionary, so new
   and restyled comments look the same in every viewer. Highlights multiply (`/BM /Multiply`).
-  Note icons are PdfCraft's own drawings. Text boxes use standard Helvetica (WinAnsi), with
+  Note icons are PdfKub's own drawings. Text boxes use standard Helvetica (WinAnsi), with
   line breaking by approximate Helvetica proportions (no font program is bundled).
 - **Edits:** reply (`/IRT`), set review status (a `/State` reply, as Acrobat's "Set status"
   does), change text, move, resize, restyle, delete (with pop-up and replies).

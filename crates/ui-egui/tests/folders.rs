@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime};
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use pdfcraft_ui_egui::PdfKubApp;
 use pdfcraft_ui_egui::folders_ui::{MAX_PINNED, SHOWN};
 
 /// A one-page PDF.
@@ -22,7 +22,7 @@ struct TempFolder(PathBuf);
 
 impl TempFolder {
     fn new(name: &str) -> Self {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-pinned-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("pdfkub-pinned-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         Self(dir)
@@ -48,9 +48,9 @@ impl Drop for TempFolder {
     }
 }
 
-fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness(setup: impl FnOnce(&mut PdfKubApp) + 'static) -> Harness<'static, PdfKubApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         // List folders on the frame that asks, not on a worker thread.
         app.run_inline = true;
         setup(&mut app);
@@ -61,7 +61,7 @@ fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, P
     h
 }
 
-fn listed(h: &Harness<'static, PdfCraftApp>, folder: &str) -> Vec<String> {
+fn listed(h: &Harness<'static, PdfKubApp>, folder: &str) -> Vec<String> {
     h.state().pinned.listing(folder).map(|l| l.files.iter().map(|f| f.name.clone()).collect()).unwrap_or_default()
 }
 
@@ -143,9 +143,9 @@ fn unpinning_removes_the_folder_but_not_its_files() {
 fn pinned_folders_survive_a_restart() {
     let dir = TempFolder::new("restart");
     let folder = dir.path();
-    let mut a = PdfCraftApp::new();
+    let mut a = PdfKubApp::new();
     assert!(a.pin_folder(&folder));
-    let mut b = PdfCraftApp::new();
+    let mut b = PdfKubApp::new();
     b.restore(&a.persist());
     assert_eq!(b.pinned.folders, [folder]);
     b.restore("{\"pinned_folders\": [5, \"relative/path\"]}");
@@ -156,7 +156,7 @@ fn pinned_folders_survive_a_restart() {
 
 #[test]
 fn an_unavailable_folder_says_so_and_stays_pinned() {
-    let missing = std::env::temp_dir().join(format!("pdfcraft-pinned-gone-{}", std::process::id()));
+    let missing = std::env::temp_dir().join(format!("pdfkub-pinned-gone-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&missing);
     let folder = missing.to_string_lossy().into_owned();
     let pin = folder.clone();
@@ -196,7 +196,7 @@ fn show_more_reveals_the_older_pdfs() {
 
 #[test]
 fn pinning_is_limited_and_never_duplicates() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfKubApp::new();
     assert!(!app.pin_folder("relative/scans"), "a relative path is refused");
     let root = if cfg!(windows) { "C:\\" } else { "/" };
     let folders: Vec<String> = (0..MAX_PINNED).map(|i| Path::new(root).join(format!("pinned-{i}")).to_string_lossy().into_owned()).collect();

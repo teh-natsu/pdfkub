@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use pdfcraft_ui_egui::PdfKubApp;
 use pdfcraft_ui_egui::control::{ControlClient, Reply};
 use serde_json::{Value, json};
 
@@ -34,15 +34,15 @@ fn fixture(n: usize) -> Vec<u8> {
     out
 }
 
-fn harness() -> (Harness<'static, PdfCraftApp>, ControlClient) {
+fn harness() -> (Harness<'static, PdfKubApp>, ControlClient) {
     harness_pages(5)
 }
 
-fn harness_pages(pages: usize) -> (Harness<'static, PdfCraftApp>, ControlClient) {
+fn harness_pages(pages: usize) -> (Harness<'static, PdfKubApp>, ControlClient) {
     let slot: Arc<Mutex<Option<ControlClient>>> = Arc::default();
     let s = slot.clone();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfKubApp::new();
         *s.lock().unwrap() = Some(app.attach_control(&cc.egui_ctx));
         app.open_bytes("doc.pdf", None, fixture(pages)).unwrap();
         app
@@ -53,7 +53,7 @@ fn harness_pages(pages: usize) -> (Harness<'static, PdfCraftApp>, ControlClient)
 }
 
 /// Send a request and run frames until it is answered.
-fn call(h: &mut Harness<'static, PdfCraftApp>, c: &ControlClient, method: &str, params: Value) -> Reply {
+fn call(h: &mut Harness<'static, PdfKubApp>, c: &ControlClient, method: &str, params: Value) -> Reply {
     let rx = c.send(method, params);
     for _ in 0..30 {
         h.step();
@@ -64,7 +64,7 @@ fn call(h: &mut Harness<'static, PdfCraftApp>, c: &ControlClient, method: &str, 
     panic!("{method}: no reply after 30 frames");
 }
 
-fn ok(h: &mut Harness<'static, PdfCraftApp>, c: &ControlClient, method: &str, params: Value) -> Value {
+fn ok(h: &mut Harness<'static, PdfKubApp>, c: &ControlClient, method: &str, params: Value) -> Value {
     call(h, c, method, params).unwrap_or_else(|e| panic!("{method}: {e}"))
 }
 
@@ -126,7 +126,7 @@ fn language_switch_preserves_document_and_command_ids() {
 }
 
 #[cfg(target_os = "linux")]
-fn start_autoscroll(h: &mut Harness<'static, PdfCraftApp>, c: &ControlClient) -> egui::Pos2 {
+fn start_autoscroll(h: &mut Harness<'static, PdfKubApp>, c: &ControlClient) -> egui::Pos2 {
     let p = h.state().views[0].viewport_rect().center();
     ok(h, c, "ui.click", json!({ "x": p.x, "y": p.y, "button": "middle" }));
     assert!(h.state().views[0].auto_scrolling());
@@ -220,7 +220,7 @@ fn farther_from_the_click_scrolls_faster_in_the_viewer_and_page_grid() {
         let (mut h, c) = harness_pages(40);
         h.state_mut().views[0].organize = organize;
         h.run_steps(3);
-        let top = |h: &Harness<'static, PdfCraftApp>| {
+        let top = |h: &Harness<'static, PdfKubApp>| {
             if organize { h.get_by_label("Page 1").rect().top() } else { h.state().views[0].page_screen_rect(0).unwrap().top() }
         };
         let p = start_autoscroll(&mut h, &c);
@@ -255,10 +255,10 @@ fn autoscroll_uses_elapsed_frame_time_and_preserves_fractional_motion_in_both_vi
             h.state_mut().views[0].organize = organize;
             h.run_steps(3);
             assert_eq!(h.ctx.pixels_per_point(), scale);
-            let top = |h: &Harness<'static, PdfCraftApp>| {
+            let top = |h: &Harness<'static, PdfKubApp>| {
                 if organize { h.get_by_label("Page 1").rect().top() } else { h.state().views[0].page_screen_rect(0).unwrap().top() }
             };
-            let step = |h: &mut Harness<'static, PdfCraftApp>| {
+            let step = |h: &mut Harness<'static, PdfKubApp>| {
                 // Deliberately differ from the harness's predicted frame interval: scrolling
                 // must follow the elapsed time rather than the display's predicted rate.
                 h.input_mut().time = Some(h.ctx.input(|i| i.time) + 1.0 / f64::from(frames));
@@ -771,7 +771,7 @@ fn loopback_transport_requires_the_token() {
             out
         })
     };
-    let pump = |h: &mut Harness<'static, PdfCraftApp>, t: std::thread::JoinHandle<Vec<Value>>| {
+    let pump = |h: &mut Harness<'static, PdfKubApp>, t: std::thread::JoinHandle<Vec<Value>>| {
         while !t.is_finished() {
             h.step();
         }
@@ -832,7 +832,7 @@ fn measurement_tools_draw_live_calibrate_save_and_export() {
     h.run_steps(3);
     let scale = h.state().session.get(doc).unwrap().measurement_scale(0, [20.0, 20.0]).unwrap();
     assert!((scale.x - 0.1).abs() < 1e-10);
-    let click = |h: &mut Harness<'static, PdfCraftApp>, c: &ControlClient, x: f32, y: f32| {
+    let click = |h: &mut Harness<'static, PdfKubApp>, c: &ControlClient, x: f32, y: f32| {
         let r = h.state().views[0].page_screen_rect(0).unwrap();
         ok(h, c, "ui.click", json!({"x":r.left()+x*r.width()/200.0,"y":r.top()+y*r.height()/300.0}));
         h.run_steps(2);
