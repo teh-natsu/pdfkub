@@ -657,7 +657,6 @@
 	Centre	Centrer
 	Align right	Aligner à droite
 	Justify	Justifier
-	Standard fonts; text outside Windows-1252 isn't supported yet.	Polices standard ; le texte hors Windows-1252 n'est pas encore pris en charge.
 	Edit image	Modifier l'image
 	Rotate counterclockwise	Pivoter vers la gauche
 	Rotate clockwise	Pivoter vers la droite
@@ -2025,3 +2024,6 @@
 	No recent files	Aucun fichier récent
 	Go to page…	Aller à la page…
 	Based on PdfCraft by the ArtCraft team.	Basé sur PdfCraft de l'équipe ArtCraft.
+	Thai and other scripts are drawn with an embedded font: the one you pick, or Anuphan.	Le thaï et les autres écritures utilisent une police incorporée : celle que vous choisissez, ou Anuphan.
+	Embedded in the PDF; has Thai	Incorporée au PDF ; contient le thaï
+	Fonts on this computer	Polices de cet ordinateur

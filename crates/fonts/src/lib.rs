@@ -6,6 +6,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 mod craft;
+mod embed;
 mod encodings;
 pub mod pdf;
 mod script;
@@ -13,6 +14,7 @@ pub use craft::{
     CRAFT_FONTS, CraftFont, SHIPPORI_MINCHO, document_japanese_font, document_japanese_font_for_style, ui_arabic_fonts, ui_chinese_fonts,
     ui_cjk_fonts, ui_japanese_fonts, ui_telugu_fonts,
 };
+pub use embed::{ANUPHAN_MEDIUM, ANUPHAN_REGULAR, ANUPHAN_SEMIBOLD, EmbedError, EmbedFace, MAX_FONT_BYTES, PlacedGlyph, Shaped, embeddable};
 pub use script::{GlyphError, GlyphOutline, MAX_SIGNATURE_CHARS, ScriptOutline, japanese_glyph, japanese_glyph_from, script_outline};
 
 /// Approximate advance of `s` in Helvetica (or Arial) at `size` points.
@@ -65,6 +67,11 @@ pub fn wrap(text: &str, size: f64, width: f64) -> Vec<String> {
 }
 
 /// Encode text in WinAnsiEncoding (ISO 32000-2 Annex D); unmappable characters become `?`.
+/// Whether every character of `s` has a WinAnsi code (`win_ansi` writes `?` for the others).
+pub fn win_ansi_covers(s: &str) -> bool {
+    s.chars().all(|c| c == '?' || c.is_control() || win_ansi(c.encode_utf8(&mut [0; 4])) != b"?")
+}
+
 pub fn win_ansi(s: &str) -> Vec<u8> {
     s.chars()
         .map(|c| match c {

@@ -352,11 +352,7 @@ pub(crate) fn format_panel(ui: &mut egui::Ui, t: &Tokens, style: &AddedText) -> 
     let mut s = style.clone();
     widgets::section_title(ui, tl!("Format text"));
     ui.horizontal(|ui| {
-        egui::ComboBox::from_id_salt("font-family").selected_text(s.family.label()).width(110.0).show_ui(ui, |ui| {
-            for f in [FontFamily::Helvetica, FontFamily::Times, FontFamily::Courier] {
-                ui.selectable_value(&mut s.family, f, f.label());
-            }
-        });
+        font_menu(ui, t, &mut s);
         // A list rather than a drag value: every change is an undo step.
         egui::ComboBox::from_id_salt("font-size").selected_text(format!("{} pt", s.size)).width(70.0).show_ui(ui, |ui| {
             for size in [8.0, 9.0, 10.0, 11.0, 12.0, 14.0, 16.0, 18.0, 20.0, 24.0, 28.0, 36.0, 48.0, 72.0] {
@@ -367,9 +363,11 @@ pub(crate) fn format_panel(ui: &mut egui::Ui, t: &Tokens, style: &AddedText) -> 
     ui.horizontal(|ui| {
         if ui.selectable_label(s.bold, egui::RichText::new("B").strong()).on_hover_text(tl!("Bold")).clicked() {
             s.bold = !s.bold;
+            restyle(&mut s);
         }
         if ui.selectable_label(s.italic, egui::RichText::new("I").italics()).on_hover_text(tl!("Italic")).clicked() {
             s.italic = !s.italic;
+            restyle(&mut s);
         }
         ui.separator();
         for (a, icon, tip) in [
@@ -387,8 +385,63 @@ pub(crate) fn format_panel(ui: &mut egui::Ui, t: &Tokens, style: &AddedText) -> 
     if let Some(picked) = crate::comments::swatch_grid(ui, Some(c)) {
         s.color = picked;
     }
-    ui.label(egui::RichText::new(tl!("Standard fonts; text outside Windows-1252 isn't supported yet.")).small().color(t.text_faint));
+    ui.label(
+        egui::RichText::new(tl!("Thai and other scripts are drawn with an embedded font: the one you pick, or Anuphan.")).small().color(t.text_faint),
+    );
     (s != *style).then_some(s)
+}
+
+/// The name shown for the text's font.
+fn font_label(s: &AddedText) -> String {
+    s.font.as_ref().map_or_else(|| s.family.label().to_owned(), |f| f.name.clone())
+}
+
+/// The font list: the three standard fonts, Anuphan (bundled, with Thai), then the fonts
+/// installed on this computer that may be embedded, Thai ones first.
+fn font_menu(ui: &mut egui::Ui, t: &Tokens, s: &mut AddedText) {
+    egui::ComboBox::from_id_salt("font-family").selected_text(font_label(s)).width(170.0).height(420.0).show_ui(ui, |ui| {
+        for f in [FontFamily::Helvetica, FontFamily::Times, FontFamily::Courier] {
+            if ui.selectable_label(s.font.is_none() && s.family == f, f.label()).clicked() {
+                s.family = f;
+                s.font = None;
+            }
+        }
+        ui.separator();
+        let anuphan = s.font.as_ref().is_some_and(|f| f.name.starts_with("Anuphan"));
+        if ui.selectable_label(anuphan, "Anuphan").on_hover_text(tl!("Embedded in the PDF; has Thai")).clicked() {
+            s.font = Some(pdfcraft_engine::EmbedFace::anuphan(s.bold));
+        }
+        let families = crate::font_list::installed();
+        if families.is_empty() {
+            return;
+        }
+        ui.separator();
+        ui.label(egui::RichText::new(tl!("Fonts on this computer")).small().color(t.text_faint));
+        for fam in families {
+            let current = s.font.as_ref().is_some_and(|f| fam.faces.iter().any(|x| x.name == f.name));
+            let label = if fam.thai { format!("{}  ·  ไทย", fam.name) } else { fam.name.clone() };
+            if ui.selectable_label(current, label).clicked() {
+                match fam.face(s.bold, s.italic).map(crate::font_list::SystemFace::load) {
+                    Some(Ok(face)) => s.font = Some(face),
+                    Some(Err(e)) => log::warn!("font {}: {e}", fam.name),
+                    None => {}
+                }
+            }
+        }
+    });
+}
+
+/// After Bold or Italic changes, use the matching face of the chosen font's family.
+fn restyle(s: &mut AddedText) {
+    let Some(font) = &s.font else { return };
+    if font.name.starts_with("Anuphan") {
+        s.font = Some(pdfcraft_engine::EmbedFace::anuphan(s.bold));
+    } else if let Some(face) = crate::font_list::family_of(&font.name).and_then(|fam| fam.face(s.bold, s.italic))
+        && face.name != font.name
+        && let Ok(loaded) = face.load()
+    {
+        s.font = Some(loaded);
+    }
 }
 
 /// How to use the tools, under the Add content list.

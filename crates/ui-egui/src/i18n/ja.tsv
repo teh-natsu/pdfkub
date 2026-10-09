@@ -683,7 +683,6 @@
 	Centre	中央揃え
 	Align right	右揃え
 	Justify	両端揃え
-	Standard fonts; text outside Windows-1252 isn't supported yet.	標準フォントを使用します。Windows-1252 に含まれない文字にはまだ対応していません。
 	Edit image	画像を編集
 	Rotate counterclockwise	反時計回りに回転
 	Rotate clockwise	時計回りに回転
@@ -1967,3 +1966,6 @@
 	Couldn't import the signature image: {e}	署名画像を読み込めませんでした: {e}
 	Go to page…	ページへ移動…
 	Based on PdfCraft by the ArtCraft team.	ArtCraft チームの PdfCraft をもとにしています。
+	Thai and other scripts are drawn with an embedded font: the one you pick, or Anuphan.	タイ語などの文字は埋め込みフォントで描画されます（選択したフォント、または Anuphan）。
+	Embedded in the PDF; has Thai	PDF に埋め込まれます。タイ語を含みます
+	Fonts on this computer	このコンピューターのフォント

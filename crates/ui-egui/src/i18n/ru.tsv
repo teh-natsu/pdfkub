@@ -675,7 +675,6 @@
 	Centre	По центру
 	Align right	Выровнять вправо
 	Justify	По ширине
-	Standard fonts; text outside Windows-1252 isn't supported yet.	Стандартные шрифты; текст вне Windows-1252 пока не поддерживается.
 	Edit image	Редактировать изображение
 	Rotate counterclockwise	Повернуть против часовой стрелки
 	Rotate clockwise	Повернуть по часовой стрелке
@@ -1986,3 +1985,6 @@
 	Created a PDF from the first {n} files	PDF создан из первых файлов: {n}
 	Go to page…	Перейти на страницу…
 	Based on PdfCraft by the ArtCraft team.	Основано на PdfCraft от команды ArtCraft.
+	Thai and other scripts are drawn with an embedded font: the one you pick, or Anuphan.	Тайский и другие письменности рисуются встроенным шрифтом: выбранным вами или Anuphan.
+	Embedded in the PDF; has Thai	Встраивается в PDF; есть тайский
+	Fonts on this computer	Шрифты на этом компьютере

@@ -180,10 +180,10 @@ pub fn font_definitions_for(prefer_hans: bool) -> FontDefinitions {
     add(&mut fonts, "Inter-SemiBold", include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf"));
     add(&mut fonts, "JetBrainsMono", include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf"));
     // Thai: Inter and egui's defaults have no Thai letters, so Anuphan follows Inter in every
-    // family, at the same three weights.
-    add(&mut fonts, "Anuphan", include_bytes!("../../../assets/fonts/Anuphan-Regular.ttf"));
-    add(&mut fonts, "Anuphan-Medium", include_bytes!("../../../assets/fonts/Anuphan-Medium.ttf"));
-    add(&mut fonts, "Anuphan-SemiBold", include_bytes!("../../../assets/fonts/Anuphan-SemiBold.ttf"));
+    // family, at the same three weights. The bytes are the ones pdfcraft-fonts embeds in PDFs.
+    add(&mut fonts, "Anuphan", pdfcraft_fonts::ANUPHAN_REGULAR);
+    add(&mut fonts, "Anuphan-Medium", pdfcraft_fonts::ANUPHAN_MEDIUM);
+    add(&mut fonts, "Anuphan-SemiBold", pdfcraft_fonts::ANUPHAN_SEMIBOLD);
     fonts.families.entry(FontFamily::Proportional).or_default().splice(0..0, ["Inter".to_owned(), "Anuphan".to_owned()]);
     fonts.families.entry(FontFamily::Monospace).or_default().splice(0..0, ["JetBrainsMono".to_owned(), "Anuphan".to_owned()]);
     // The same static bytes pdfcraft-fonts uses for Japanese/Chinese text in PDFs: one copy, not two.

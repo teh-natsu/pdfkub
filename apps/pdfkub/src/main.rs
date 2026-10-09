@@ -152,6 +152,8 @@ fn main() -> eframe::Result {
     let apple_events = apple_events::AppleEvents::install();
     #[cfg(target_os = "macos")]
     let apple_events = &apple_events;
+    // List the installed fonts in the background, so the Add text font menu opens at once.
+    std::thread::spawn(|| pdfcraft_ui_egui::font_list::installed().len());
     eframe::run_native(
         "PdfKub",
         native,

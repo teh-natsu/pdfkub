@@ -12,3 +12,6 @@ workspace = true
 pdfcraft-cos = { workspace = true }
 # Glyph outlines of the bundled script font (typed signatures); already in the tree via egui.
 skrifa = "0.44"
+# Shapes added text (Thai marks, ligatures) for embedded fonts; the same version egui uses.
+harfrust = "0.12"
+thiserror = { workspace = true }

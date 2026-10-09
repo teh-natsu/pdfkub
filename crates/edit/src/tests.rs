@@ -228,6 +228,62 @@ fn added_text_and_images_are_page_content_that_stays_editable() {
 }
 
 /// One page with Helvetica (WinAnsi) and a subset font that has only the glyphs it uses.
+#[test]
+fn thai_added_text_embeds_anuphan_and_stays_editable() {
+    let mut doc = fixture();
+    let thai = AddedText {
+        rect: [72.0, 600.0, 300.0, 700.0], text: "สวัสดีครับ ที่นี่".into(), size: 16.0, ..AddedText::default()
+    };
+    assert_eq!(thai.face().map(|f| f.name), Some("Anuphan".into()), "Thai can't be drawn with Helvetica");
+    add_content(&mut doc, 0, &Content::Text(thai)).unwrap();
+    let more = AddedText { rect: [72.0, 500.0, 300.0, 560.0], text: "ภาษาไทย".into(), ..AddedText::default() };
+    add_content(&mut doc, 0, &Content::Text(more)).unwrap();
+    let doc2 = reopen(&doc);
+    let all = list_added(&doc2);
+    let Content::Text(t) = &all[0].content else { panic!() };
+    assert_eq!(t.text, "สวัสดีครับ ที่นี่");
+    assert_eq!(t.font, None, "the automatic Thai face is not stored as a choice");
+    let page0 = streams(&doc2, 0).join("\n");
+    assert!(page0.contains("/ActualText <FEFF0E2A0E270E310E2A"), "{page0}");
+    assert!(page0.contains("> Tj") && !page0.contains("(?"), "glyph codes, not WinAnsi question marks: {page0}");
+    // Both items draw with one embedded Type0 font.
+    let p = &crate::page_list(&doc2)[0];
+    let res = doc2.resolve(p.dict.get(b"Resources").unwrap());
+    let fonts = doc2.resolve(res.as_dict().unwrap().get(b"Font").unwrap());
+    let embedded: Vec<_> = fonts.as_dict().unwrap().iter().filter(|(k, _)| k.starts_with(b"PCE")).collect();
+    assert_eq!(embedded.len(), 1, "{embedded:?}");
+    let t0 = doc2.resolve(embedded[0].1);
+    assert_eq!(t0.as_dict().unwrap().name(b"Subtype"), Some(&b"Type0"[..]));
+}
+
+#[test]
+fn a_chosen_font_is_kept_with_the_text() {
+    let mut doc = fixture();
+    let face = pdfcraft_fonts::EmbedFace::anuphan(true);
+    let t = AddedText { rect: [72.0, 600.0, 300.0, 700.0], text: "Hello".into(), font: Some(face.clone()), ..AddedText::default() };
+    add_content(&mut doc, 0, &Content::Text(t)).unwrap();
+    let doc2 = reopen(&doc);
+    let Content::Text(back) = &list_added(&doc2)[0].content else { panic!() };
+    assert_eq!(back.font.as_ref(), Some(&face));
+    // A face without the letters is refused rather than drawing empty boxes.
+    let t = AddedText { rect: [72.0, 400.0, 300.0, 500.0], text: "日本語".into(), font: Some(face), ..AddedText::default() };
+    assert!(add_content(&mut doc, 0, &Content::Text(t)).is_err());
+}
+
+#[test]
+fn long_thai_words_wrap_between_letters_but_not_before_marks() {
+    let t = AddedText {
+        rect: [0.0, 0.0, 60.0, 100.0], text: "ประเทศไทยที่สวยงามมากมาย".into(), size: 12.0, ..AddedText::default()
+    };
+    let lines = crate::added::lines(&t);
+    assert!(lines.len() > 1, "{lines:?}");
+    assert_eq!(lines.concat(), t.text);
+    for l in &lines {
+        let first = l.chars().next().unwrap();
+        assert!(!matches!(first, '\u{0E31}' | '\u{0E34}'..='\u{0E3A}' | '\u{0E47}'..='\u{0E4E}'), "a line starts with a mark: {lines:?}");
+    }
+}
+
 fn text_page(content: &str) -> Document {
     let objs: Vec<String> = vec![
         "<< /Type /Catalog /Pages 2 0 R >>".into(),

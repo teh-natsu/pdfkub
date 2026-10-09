@@ -35,16 +35,27 @@ fn style(a: &Args, t: &mut AddedText) -> Result<()> {
     if let Some(s) = a.opt_num("size")? {
         t.size = s;
     }
+    let mut anuphan = t.font.as_ref().is_some_and(|f| f.name.starts_with("Anuphan"));
     if let Some(f) = a.opt_str("font")? {
+        anuphan = false;
+        t.font = None;
         t.family = match f.to_ascii_lowercase().as_str() {
             "helvetica" | "sans" | "arial" => FontFamily::Helvetica,
             "times" | "serif" => FontFamily::Times,
             "courier" | "mono" | "monospace" => FontFamily::Courier,
-            other => return Err(bad(format!("unknown font {other:?} (helvetica, times, courier)"))),
+            "anuphan" | "thai" => {
+                anuphan = true;
+                t.family
+            }
+            other => return Err(bad(format!("unknown font {other:?} (helvetica, times, courier, anuphan)"))),
         };
     }
     if let Some(b) = a.opt_bool("bold")? {
         t.bold = b;
+    }
+    if anuphan {
+        // The bundled Thai face, embedded in the PDF; its bold is the SemiBold weight.
+        t.font = Some(pdfcraft_engine::EmbedFace::anuphan(t.bold));
     }
     if let Some(i) = a.opt_bool("italic")? {
         t.italic = i;
@@ -81,7 +92,7 @@ impl Automation {
                     AddedContent::Text(t) => {
                         v["type"] = json!("text");
                         v["text"] = json!(t.text);
-                        v["font"] = json!(t.family.label());
+                        v["font"] = json!(t.font.as_ref().map_or(t.family.label(), |f| f.name.as_str()));
                         v["size"] = json!(t.size);
                         v["bold"] = json!(t.bold);
                         v["italic"] = json!(t.italic);

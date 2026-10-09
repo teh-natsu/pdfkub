@@ -8,7 +8,7 @@
 //! `/Rotate`), so items stay upright on rotated pages.
 
 use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
-use pdfcraft_fonts::{helvetica_width, literal, win_ansi};
+use pdfcraft_fonts::{EmbedFace, helvetica_width, literal, win_ansi, win_ansi_covers};
 
 use crate::{EditError, check, contents, n, page_list, place_tagged};
 
@@ -95,6 +95,29 @@ pub struct AddedText {
     pub size: f64,
     pub color: [f64; 3],
     pub align: Align,
+    /// An embedded TrueType face (any script); `None` draws with the standard font `family`,
+    /// or with the bundled Anuphan when the text needs characters outside WinAnsi (Thai).
+    pub font: Option<EmbedFace>,
+}
+
+impl AddedText {
+    /// The face the text is drawn with, if any: the chosen one, else Anuphan for text the
+    /// standard fonts can't show.
+    pub fn face(&self) -> Option<EmbedFace> {
+        match &self.font {
+            Some(f) => Some(f.clone()),
+            None if !win_ansi_covers(&self.text) => Some(EmbedFace::anuphan(self.bold)),
+            None => None,
+        }
+    }
+
+    /// The width of `s` in this item's font and size.
+    fn width_of(&self, face: Option<&EmbedFace>, s: &str) -> f64 {
+        match face {
+            Some(f) => f.shape(s).width(self.size),
+            None => self.family.width(s, self.size, self.bold),
+        }
+    }
 }
 
 impl Default for AddedText {
@@ -108,6 +131,7 @@ impl Default for AddedText {
             size: 12.0,
             color: [0.0; 3],
             align: Align::Left,
+            font: None,
         }
     }
 }
@@ -196,21 +220,43 @@ fn norm(r: [f64; 4]) -> [f64; 4] {
 /// The lines of a text item after wrapping to its box width.
 pub fn lines(t: &AddedText) -> Vec<String> {
     let width = (t.rect[2] - t.rect[0]).max(t.size);
+    let face = t.face();
+    let fits = |s: &str| t.width_of(face.as_ref(), s) <= width;
     let mut out = Vec::new();
     for para in t.text.split('\n') {
         let mut line = String::new();
         for word in para.split(' ') {
             let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
-            if !line.is_empty() && t.family.width(&candidate, t.size, t.bold) > width {
-                out.push(std::mem::take(&mut line));
-                line = word.to_string();
-            } else {
+            if fits(&candidate) {
                 line = candidate;
+                continue;
             }
+            if !line.is_empty() {
+                out.push(std::mem::take(&mut line));
+            }
+            // A word wider than the box (Thai is written without spaces between words) breaks
+            // between characters, never before a combining mark.
+            let mut piece = String::new();
+            for c in word.chars() {
+                let mut next = piece.clone();
+                next.push(c);
+                if !piece.is_empty() && !is_mark(c) && !fits(&next) {
+                    out.push(std::mem::take(&mut piece));
+                    next = c.to_string();
+                }
+                piece = next;
+            }
+            line = piece;
         }
         out.push(line);
     }
     out
+}
+
+/// Characters that attach to the one before: combining marks (Thai vowels above and below, tone
+/// marks, Latin diacritics).
+fn is_mark(c: char) -> bool {
+    matches!(c, '\u{0300}'..='\u{036F}' | '\u{0E31}' | '\u{0E34}'..='\u{0E3A}' | '\u{0E47}'..='\u{0E4E}' | '\u{0EB1}' | '\u{0EB4}'..='\u{0EBC}' | '\u{0EC8}'..='\u{0ECD}')
 }
 
 /// The box a text item occupies (height from its lines).
@@ -224,11 +270,64 @@ fn font_name(base: &str) -> String {
     format!("PCF{}", base.replace('-', ""))
 }
 
-/// Content and resources for an item; `view` maps display space to user space.
-fn draw(doc: &Document, c: &Content, view: [f64; 6]) -> Result<(Vec<u8>, Dict), EditError> {
+/// The embedded Type0 font of a text item and each line's character codes.
+struct EmbeddedText {
+    font: ObjRef,
+    codes: Vec<Vec<u16>>,
+}
+
+/// Content and resources for an item; `view` maps display space to user space. `font` is set for
+/// text drawn with an [`EmbedFace`].
+fn draw(doc: &Document, c: &Content, view: [f64; 6], embedded: Option<&EmbeddedText>) -> Result<(Vec<u8>, Dict), EditError> {
     let mut res = Dict::new();
     let mut out = format!("q {} {} {} {} {} {} cm\n", n(view[0]), n(view[1]), n(view[2]), n(view[3]), n(view[4]), n(view[5])).into_bytes();
     match c {
+        Content::Text(t) if t.face().is_some() => {
+            let face = t.face().ok_or_else(|| EditError::Invalid("no font".into()))?;
+            let embedded = embedded.ok_or_else(|| EditError::Invalid("the font wasn't embedded".into()))?;
+            let font = embedded.font;
+            let name = format!("PCE{}", font.num);
+            let mut fonts = Dict::new();
+            fonts.set(name.clone().into_bytes(), Object::Ref(font));
+            res.set(b"Font".to_vec(), Object::Dict(fonts));
+            let r = text_rect(t);
+            let [cr, cg, cb] = t.color.map(|v| v.clamp(0.0, 1.0));
+            out.extend(format!("BT /{name} {} Tf {} {} {} rg\n", n(t.size), n(cr), n(cg), n(cb)).bytes());
+            let all = lines(t);
+            for (i, line) in all.iter().enumerate() {
+                let shaped = face.shape(line);
+                let scale = t.size / shaped.units_per_em;
+                let w = shaped.width(t.size);
+                let x0 = match t.align {
+                    Align::Left | Align::Justify => r[0],
+                    Align::Center => r[0] + ((r[2] - r[0]) - w) / 2.0,
+                    Align::Right => r[2] - w,
+                };
+                let y0 = r[3] - (i as f64 * 1.2 + 0.95) * t.size;
+                let spaces = line.matches(' ').count();
+                let extra =
+                    if t.align == Align::Justify && i + 1 < all.len() && spaces > 0 { ((r[2] - r[0]) - w).max(0.0) / spaces as f64 } else { 0.0 };
+                // The exact text for search, copy and screen readers, whatever glyphs shaping chose.
+                let units: String = line.encode_utf16().map(|u| format!("{u:04X}")).collect();
+                out.extend(format!("/Span << /ActualText <FEFF{units}> >> BDC\n").bytes());
+                let mut shift = 0.0;
+                let mut last_cluster = usize::MAX;
+                let codes = embedded.codes.get(i).ok_or_else(|| EditError::Invalid("the text changed while it was drawn".into()))?;
+                for (g, code) in shaped.glyphs.iter().zip(codes) {
+                    if g.cluster != last_cluster {
+                        if last_cluster != usize::MAX && line.get(..g.cluster).is_some_and(|s| s.ends_with(' ')) {
+                            shift += extra;
+                        }
+                        last_cluster = g.cluster;
+                    }
+                    let x = x0 + g.x * scale + shift;
+                    let y = y0 + g.y * scale;
+                    out.extend(format!("1 0 0 1 {} {} Tm <{code:04X}> Tj\n", n(x), n(y)).bytes());
+                }
+                out.extend_from_slice(b"EMC\n");
+            }
+            out.extend_from_slice(b"ET\n");
+        }
         Content::Text(t) => {
             let base = t.family.base_font(t.bold, t.italic);
             let name = font_name(base);
@@ -318,6 +417,12 @@ fn params(c: &Content) -> Dict {
                 }),
             );
             d.set(b"Rect".to_vec(), arr(&text_rect(t)));
+            // A chosen embedded face: its name, the font object and the file's length (to share
+            // one font object between items with the same face).
+            if let Some(f) = &t.font {
+                d.set(b"EmbedFont".to_vec(), PdfString::text(&f.name));
+                d.set(b"EmbedLength".to_vec(), Object::Int(f.data.len() as i64));
+            }
         }
         Content::Image(i) => {
             d.set(b"Kind".to_vec(), Object::name("Image"));
@@ -338,6 +443,11 @@ fn params(c: &Content) -> Dict {
         }
     }
     d
+}
+
+/// The embedded font object of a saved text item, if it has one.
+fn font_obj(d: &Dict) -> Option<ObjRef> {
+    d.get(b"EmbedFontObj").and_then(Object::as_ref)
 }
 
 fn parse(doc: &Document, d: &Dict) -> Option<Content> {
@@ -361,6 +471,11 @@ fn parse(doc: &Document, d: &Dict) -> Option<Content> {
                     Some(3) => Align::Justify,
                     _ => Align::Left,
                 },
+                font: d
+                    .get(b"EmbedFont")
+                    .and_then(|n| doc.resolve(n).as_string().map(|s| s.to_text()))
+                    .zip(font_obj(d))
+                    .and_then(|(name, obj)| EmbedFace::read(doc, obj, &name)),
             }))
         }
         b"Image" => {
@@ -394,6 +509,11 @@ fn validate(c: &Content) -> Result<(), EditError> {
             if (r[2] - r[0]).abs() < 1.0 {
                 return Err(EditError::Invalid("the text box is too narrow".into()));
             }
+            if let Some(face) = t.face()
+                && !face.covers(&t.text)
+            {
+                return Err(EditError::Invalid(format!("the font {} has no letters for some of this text", face.name)));
+            }
         }
         Content::Image(_) => {
             if (r[2] - r[0]).abs() < 1.0 || (r[3] - r[1]).abs() < 1.0 {
@@ -409,8 +529,28 @@ fn write(doc: &mut Document, page: usize, c: &Content, obj: Option<ObjRef>) -> R
     validate(c)?;
     let all = page_list(doc);
     check(&[page], all.len())?;
+    // An embedded face is written once per document and shared by every item that uses it.
+    let embedded = match c {
+        Content::Text(t) => match t.face() {
+            Some(face) => {
+                let font = match shared_font(doc, &face) {
+                    Some(r) => r,
+                    None => face.write(doc).map_err(|e| EditError::Invalid(e.to_string()))?,
+                };
+                let mut codes = Vec::new();
+                for line in lines(t) {
+                    codes.push(face.codes(doc, font, &line, &face.shape(&line)).map_err(|e| EditError::Invalid(e.to_string()))?);
+                }
+                Some(EmbeddedText { font, codes })
+            }
+            None => None,
+        },
+        Content::Image(_) => None,
+    };
+    let font = embedded.as_ref().map(|e| e.font);
+    let all = page_list(doc);
     let p = &all[page];
-    let (content, res) = draw(doc, c, p.view_matrix(doc))?;
+    let (content, res) = draw(doc, c, p.view_matrix(doc), embedded.as_ref())?;
     // The page gets its own copy of its resources with the item's fonts and images added.
     let mut pres = p.dict.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
     for (k, v) in res.iter() {
@@ -423,7 +563,13 @@ fn write(doc: &mut Document, page: usize, c: &Content, obj: Option<ObjRef>) -> R
     doc.update_dict(p.obj, |d| d.set(b"Resources".to_vec(), Object::Dict(pres)))?;
     let mut sd = Dict::new();
     sd.set(b"PCMark".to_vec(), Object::name(TAG));
-    sd.set(b"PCAdded".to_vec(), Object::Dict(params(c)));
+    let mut pd = params(c);
+    if let (Some(f), Content::Text(t)) = (font, c) {
+        pd.set(b"EmbedFontObj".to_vec(), Object::Ref(f));
+        let face = t.face().map(|f| f.name).unwrap_or_default();
+        pd.set(b"EmbedFace".to_vec(), PdfString::text(&face));
+    }
+    sd.set(b"PCAdded".to_vec(), Object::Dict(pd));
     let stream = Stream::flate(sd, &content);
     match obj {
         Some(r) => {
@@ -440,6 +586,34 @@ fn write(doc: &mut Document, page: usize, c: &Content, obj: Option<ObjRef>) -> R
             Ok(r)
         }
     }
+}
+
+/// The font object another added item already embedded for `face`, if any.
+fn shared_font(doc: &Document, face: &EmbedFace) -> Option<ObjRef> {
+    for p in page_list(doc) {
+        let list: Vec<Object> = match p.dict.get(b"Contents") {
+            Some(c) => match &*doc.resolve(c) {
+                Object::Array(a) => a.clone(),
+                _ => vec![c.clone()],
+            },
+            None => Vec::new(),
+        };
+        for o in list {
+            let Some(r) = o.as_ref() else { continue };
+            let obj = doc.get(r);
+            let Some(d) = obj.as_dict() else { continue };
+            if d.name(b"PCMark") != Some(TAG.as_bytes()) {
+                continue;
+            }
+            let Some(pd) = d.get(b"PCAdded").map(|p| doc.resolve(p)).and_then(|p| p.as_dict().cloned()) else { continue };
+            let same = pd.get(b"EmbedFace").and_then(|n| doc.resolve(n).as_string().map(|s| s.to_text())).is_some_and(|n| n == face.name);
+            let Some(font) = font_obj(&pd) else { continue };
+            if same && EmbedFace::read(doc, font, &face.name).is_some_and(|f| f.data == face.data) {
+                return Some(font);
+            }
+        }
+    }
+    None
 }
 
 /// Every added item, page by page, in drawing order.

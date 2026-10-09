@@ -339,7 +339,6 @@
 	Centre	居中
 	Align right	右對齊
 	Justify	兩端對齊
-	Standard fonts; text outside Windows-1252 isn't supported yet.	標準字型；尚不支援 Windows-1252 之外的文字。
 	Edit image	編輯圖片
 	Rotate counterclockwise	逆時針旋轉
 	Rotate clockwise	順時針旋轉
@@ -1960,3 +1959,6 @@
 	Couldn't import the signature image: {e}	無法匯入簽名圖像：{e}
 	Go to page…	轉到頁面…
 	Based on PdfCraft by the ArtCraft team.	以 ArtCraft 團隊的 PdfCraft 為基礎。
+	Thai and other scripts are drawn with an embedded font: the one you pick, or Anuphan.	泰文和其他文字使用內嵌字型繪製：您選擇的字型，或 Anuphan。
+	Embedded in the PDF; has Thai	內嵌於 PDF；包含泰文
+	Fonts on this computer	本機字型

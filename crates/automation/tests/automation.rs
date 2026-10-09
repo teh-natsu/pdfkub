@@ -1760,6 +1760,28 @@ fn printing_through_tools() {
     assert!(matches!(a.call("doc_print", &json!({ "doc": doc, "pages": "99", "path": "x.pdf" })), Err(ToolError::InvalidArgs(_))));
 }
 
+/// Thai added text is drawn with an embedded font and reads back exactly, after a save too:
+/// vowels and tone marks stay with their consonants in the extracted text.
+#[test]
+fn thai_text_added_through_tools_reads_back() {
+    let dir = workdir("thai");
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_open", json!({ "path": "a.pdf" }))["doc"].as_u64().unwrap();
+    let lines = ["สวัสดีครับ ภาษาไทยที่นี่", "น้ำใจ ผู้ใหญ่ กี่ปี ปั่นจักรยาน"];
+    ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": lines.join("\n"), "at": [20, 20], "width": 400, "size": 16 }));
+    ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": "ตัวหนา", "at": [20, 120], "font": "anuphan", "bold": true }));
+    let list = ok(&mut a, "content_list", json!({ "doc": doc }));
+    assert_eq!(list["items"][1]["font"], "Anuphan Bold");
+    ok(&mut a, "doc_save", json!({ "doc": doc, "path": "thai.pdf" }));
+    let saved = ok(&mut a, "doc_open", json!({ "path": "thai.pdf" }))["doc"].as_u64().unwrap();
+    for d in [doc, saved] {
+        let text = page_text(&mut a, d)[0].clone();
+        for line in lines.iter().chain(&["ตัวหนา"]) {
+            assert!(text.contains(line), "{line:?} in {text:?}");
+        }
+    }
+}
+
 #[test]
 fn adding_content_through_tools() {
     let dir = workdir("content");
