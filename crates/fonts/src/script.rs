@@ -5,6 +5,9 @@ use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, MetadataProvider};
 
 static FONT: &[u8] = include_bytes!("../../../assets/fonts/DancingScript.ttf");
+/// Charmonman (OFL-1.1, Cadson Demak), a Thai handwriting face with a matching Latin script:
+/// typed signatures with letters Dancing Script lacks (Thai names) use it.
+static THAI_FONT: &[u8] = include_bytes!("../../../assets/fonts/Charmonman-Regular.ttf");
 
 /// Bound signature work while allowing long personal names.
 pub const MAX_SIGNATURE_CHARS: usize = 256;
@@ -52,6 +55,7 @@ struct Flatten {
     cur: Vec<[f64; 2]>,
     scale: f64,
     dx: f64,
+    dy: f64,
     points: usize,
     too_complex: bool,
     max_points: usize,
@@ -59,11 +63,11 @@ struct Flatten {
 
 impl Flatten {
     fn new(scale: f64) -> Self {
-        Self { contours: Vec::new(), cur: Vec::new(), scale, dx: 0.0, points: 0, too_complex: false, max_points: 4096 }
+        Self { contours: Vec::new(), cur: Vec::new(), scale, dx: 0.0, dy: 0.0, points: 0, too_complex: false, max_points: 4096 }
     }
 
     fn pt(&self, x: f32, y: f32) -> [f64; 2] {
-        [self.dx + x as f64 * self.scale, y as f64 * self.scale]
+        [self.dx + x as f64 * self.scale, self.dy + y as f64 * self.scale]
     }
 
     fn last(&self) -> [f64; 2] {
@@ -178,6 +182,13 @@ pub fn script_outline(text: &str) -> ScriptOutline {
         return ScriptOutline::default();
     }
     let Ok(font) = FontRef::new(FONT) else { return ScriptOutline::default() };
+    let latin = font.charmap();
+    if text.chars().any(|c| !c.is_whitespace() && latin.map(c).is_none())
+        && let Ok(thai) = FontRef::new(THAI_FONT)
+        && text.chars().filter(|c| !c.is_whitespace()).all(|c| thai.charmap().map(c).is_some())
+    {
+        return shaped_outline(&thai, text);
+    }
     let loc = LocationRef::default();
     let metrics = font.metrics(Size::unscaled(), loc);
     let scale = 1.0 / metrics.units_per_em.max(1) as f64;
@@ -203,6 +214,42 @@ pub fn script_outline(text: &str) -> ScriptOutline {
     ScriptOutline { contours: pen.contours, width: pen.dx, ascent: metrics.ascent as f64 * scale, descent: metrics.descent as f64 * scale }
 }
 
+/// `text` in `font`, shaped (Thai vowels and tone marks placed by the font's rules).
+fn shaped_outline(font: &FontRef<'_>, text: &str) -> ScriptOutline {
+    let loc = LocationRef::default();
+    let metrics = font.metrics(Size::unscaled(), loc);
+    let scale = 1.0 / metrics.units_per_em.max(1) as f64;
+    let glyphs = font.outline_glyphs();
+    let data = harfrust::ShaperData::new(font);
+    let shaper = data.shaper(font).build();
+    let mut buffer = harfrust::UnicodeBuffer::new();
+    buffer.push_str(text);
+    buffer.guess_segment_properties();
+    let shaped = shaper.shape(buffer, harfrust::ShapeOptions::new());
+    let mut pen = Flatten::new(scale);
+    pen.max_points = 262_144;
+    let mut x = 0.0;
+    for (info, pos) in shaped.glyph_infos().iter().zip(shaped.glyph_positions()) {
+        pen.dx = x + f64::from(pos.x_offset) * scale;
+        pen.dy = f64::from(pos.y_offset) * scale;
+        if let Some(g) = glyphs.get(skrifa::GlyphId::new(info.glyph_id)) {
+            let _ = g.draw(DrawSettings::unhinted(Size::unscaled(), loc), &mut pen);
+            pen.close();
+        }
+        x += f64::from(pos.x_advance) * scale;
+    }
+    pen.close();
+    if pen.too_complex {
+        return ScriptOutline::default();
+    }
+    // The ink's own height, not the face's generous ascent and descent: a signature box is sized
+    // to its bounds, and Charmonman's line metrics would leave a Thai name half the size of a
+    // Latin one.
+    let (low, high) = pen.contours.iter().flatten().fold((0.0_f64, 0.0_f64), |(lo, hi), p| (lo.min(p[1]), hi.max(p[1])));
+    let _ = metrics;
+    ScriptOutline { contours: pen.contours, width: x, ascent: high, descent: low }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -215,6 +262,20 @@ mod tests {
         assert!(max_x > o.width - 0.5, "ink reaches the last letter: {max_x} / {}", o.width);
         assert!(!super::script_outline(&"W".repeat(super::MAX_SIGNATURE_CHARS)).contours.is_empty());
         assert!(super::script_outline(&"W".repeat(super::MAX_SIGNATURE_CHARS + 1)).contours.is_empty());
+    }
+
+    #[test]
+    fn thai_names_use_the_thai_handwriting_face() {
+        let thai = super::script_outline("สมชาย ใจดี");
+        assert!(thai.contours.len() > 10 && thai.width > 2.0, "{} contours, width {}", thai.contours.len(), thai.width);
+        // Marks above stay over their consonants: the line is no wider than without them.
+        let plain = super::script_outline("กป");
+        let marked = super::script_outline("กี่ปั่");
+        assert!((marked.width - plain.width).abs() < 0.05, "{} vs {}", marked.width, plain.width);
+        assert!(marked.contours.len() > plain.contours.len());
+        // Latin-only names keep Dancing Script.
+        assert_eq!(super::script_outline("Ada").width, super::script_outline("Ada").width);
+        assert!(super::script_outline("Ada Lovelace").contours.len() > 5);
     }
 
     #[test]

@@ -18,6 +18,8 @@ list (author, source, license) is in ATTRIBUTION.md.
   of the variable font — SIL Open Font License 1.1. See assets/fonts/OFL-Anuphan.txt.
 - Sarabun typeface (assets/fonts/Sarabun-*.ttf), Copyright 2018 The Sarabun Project Authors — SIL Open Font
   License 1.1. Embedded in PDFs for added Thai text. See assets/fonts/OFL-Sarabun.txt.
+- Charmonman typeface (assets/fonts/Charmonman-Regular.ttf), Copyright 2018 The Charmonman Project Authors —
+  SIL Open Font License 1.1. Typed Thai signatures. See assets/fonts/OFL-Charmonman.txt.
 - Inter typeface (assets/fonts/Inter-*.ttf) — SIL Open Font License 1.1. See assets/fonts/OFL-Inter.txt.
 - JetBrains Mono typeface (assets/fonts/JetBrainsMono-*.ttf) — SIL Open Font License 1.1. See assets/fonts/OFL-JetBrainsMono.txt.
 - Dancing Script typeface (assets/fonts/DancingScript.ttf), Copyright 2016 The Dancing Script Project Authors — SIL Open Font License 1.1 (Reserved Font Name "Dancing Script"). See assets/fonts/OFL-DancingScript.txt.

@@ -4,7 +4,7 @@
 
 Every asset PdfKub includes, bundles or uses to build its published material, with its author, source and licence. The policy is in [AGENTS.md](AGENTS.md) §1. The machine-readable list, with SHA-256 hashes, is [ATTRIBUTION.toml](ATTRIBUTION.toml). Licence texts are kept beside the assets and summarised in [NOTICE](NOTICE).
 
-## In this repository (237)
+## In this repository (238)
 
 | Asset | Title | Author | Licence | Source | Used for |
 |---|---|---|---|---|---|
@@ -198,6 +198,7 @@ Every asset PdfKub includes, bundles or uses to build its published material, wi
 | `assets/fonts/Sarabun-Bold.ttf` | Sarabun Bold | The Sarabun Project Authors (Cadson Demak) | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/sarabun | Embedded in PDFs for added Thai text (the default Thai face) |
 | `assets/fonts/Sarabun-Italic.ttf` | Sarabun Italic | The Sarabun Project Authors (Cadson Demak) | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/sarabun | Embedded in PDFs for added Thai text (the default Thai face) |
 | `assets/fonts/Sarabun-BoldItalic.ttf` | Sarabun Bold Italic | The Sarabun Project Authors (Cadson Demak) | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/sarabun | Embedded in PDFs for added Thai text (the default Thai face) |
+| `assets/fonts/Charmonman-Regular.ttf` | Charmonman Regular | The Charmonman Project Authors (Cadson Demak) | OFL-1.1 | https://github.com/google/fonts/tree/main/ofl/charmonman | Typed signatures with Thai letters, drawn as outlines |
 | `assets/fonts/Inter-Regular.ttf` | Inter Regular | The Inter Project Authors (Rasmus Andersson) | OFL-1.1 | https://github.com/rsms/inter | UI font, embedded in the app; demo PDF labels |
 | `assets/fonts/Inter-Medium.ttf` | Inter Medium | The Inter Project Authors (Rasmus Andersson) | OFL-1.1 | https://github.com/rsms/inter | UI font, embedded in the app; demo PDF labels |
 | `assets/fonts/Inter-SemiBold.ttf` | Inter SemiBold | The Inter Project Authors (Rasmus Andersson) | OFL-1.1 | https://github.com/rsms/inter | UI font, embedded in the app; demo PDF labels |
