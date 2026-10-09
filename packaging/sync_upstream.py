@@ -202,25 +202,31 @@ def branding_left():
     return found
 
 
-edited, moves = rebrand()
-# The new names change line lengths: let rustfmt rewrap (skipped when Rust isn't installed).
-try:
-    subprocess.run(["cargo", "fmt", "--all"], cwd=ROOT, check=True)
-except (OSError, subprocess.CalledProcessError) as e:
-    print(f"cargo fmt skipped: {e}")
-dropped, rehashed = refresh_attribution()
-print(f"renamed text in {len(edited)} files, moved {len(moves)} paths")
-for f in edited:
-    print(f"  edited  {f}")
-for old, new in moves.items():
-    print(f"  moved   {old} -> {new}")
-print(f"ATTRIBUTION: refreshed {rehashed} hashes, dropped {len(dropped)} entries for missing files")
-for f in dropped:
-    print(f"  dropped {f}")
-left = branding_left()
-if left:
-    print(f"\nArtCraft branding to remove by hand ({len(left)}):")
-    for line in left:
-        print(f"  {line}")
-    sys.exit(1)
-print("no ArtCraft branding left")
+
+def main():
+    edited, moves = rebrand()
+    # The new names change line lengths: let rustfmt rewrap (skipped when Rust isn't installed).
+    try:
+        subprocess.run(["cargo", "fmt", "--all"], cwd=ROOT, check=True)
+    except (OSError, subprocess.CalledProcessError) as e:
+        print(f"cargo fmt skipped: {e}")
+    dropped, rehashed = refresh_attribution()
+    print(f"renamed text in {len(edited)} files, moved {len(moves)} paths")
+    for f in edited:
+        print(f"  edited  {f}")
+    for old, new in moves.items():
+        print(f"  moved   {old} -> {new}")
+    print(f"ATTRIBUTION: refreshed {rehashed} hashes, dropped {len(dropped)} entries for missing files")
+    for f in dropped:
+        print(f"  dropped {f}")
+    left = branding_left()
+    if left:
+        print(f"\nArtCraft branding to remove by hand ({len(left)}):")
+        for line in left:
+            print(f"  {line}")
+        sys.exit(1)
+    print("no ArtCraft branding left")
+
+
+if __name__ == "__main__":
+    main()

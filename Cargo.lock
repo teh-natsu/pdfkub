@@ -3462,6 +3462,7 @@ dependencies = [
  "hayro-syntax",
  "pdfcraft-cos",
  "pdfcraft-fonts",
+ "pdfcraft-model",
  "thiserror 2.0.21",
 ]
 
@@ -3540,6 +3541,7 @@ dependencies = [
  "pdfcraft-fonts",
  "pdfcraft-model",
  "thiserror 2.0.21",
+ "unicode-bidi",
 ]
 
 [[package]]
@@ -3721,6 +3723,7 @@ dependencies = [
 name = "pdfcraft-render"
 version = "0.4.0"
 dependencies = [
+ "bytemuck",
  "getrandom 0.4.3",
  "hayro",
  "hayro-syntax",
@@ -3728,6 +3731,7 @@ dependencies = [
  "log",
  "lopdf",
  "pdfcraft-fonts",
+ "skrifa 0.44.0",
  "thiserror 2.0.21",
 ]
 

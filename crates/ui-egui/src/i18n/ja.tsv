@@ -1969,3 +1969,4 @@
 	Thai and other scripts are drawn with an embedded font: the one you pick, or Sarabun.	タイ語などの文字は埋め込みフォントで描画されます（選択したフォント、または Sarabun）。
 	Embedded in the PDF; has Thai	PDF に埋め込まれます。タイ語を含みます
 	Fonts on this computer	このコンピューターのフォント
+	Reopen the files that were open when PdfKub last closed	前回 PdfKub を閉じたときに開いていたファイルを再度開く
