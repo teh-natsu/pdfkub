@@ -6,7 +6,10 @@
 //! into page content: invisible text (rendering mode 3) over each word, so the page becomes a
 //! searchable image (Acrobat's "Searchable Image (Exact)": the image is left untouched).
 //!
-//! The models read the Latin alphabet (English and other languages written without accents).
+//! The ocrs models read the Latin alphabet (English and other languages written without accents).
+//! Thai uses PaddleOCR's PP-OCRv5 Thai recogniser (Apache-2.0, `thai-recognition.onnx` with its
+//! character list in `thai-recognition.yml`, also fetched by `cargo xtask models`): ocrs finds
+//! the lines, and the Thai model reads each one (Thai, with Latin letters and digits).
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
@@ -17,9 +20,13 @@ pub use pdfcraft_fonts::helvetica_width;
 /// The model files, as named in ATTRIBUTION.toml.
 pub const DETECTION_MODEL: &str = "text-detection.rten";
 pub const RECOGNITION_MODEL: &str = "text-recognition.rten";
+/// PaddleOCR's Thai line recogniser and its configuration (the character list).
+pub const THAI_RECOGNITION_MODEL: &str = "thai-recognition.onnx";
+pub const THAI_RECOGNITION_CONFIG: &str = "thai-recognition.yml";
 
-/// The languages the models read (ISO 639-1); all use the Latin alphabet without accents.
-pub const LANGUAGES: &[(&str, &str)] = &[("en", "English")];
+/// The languages the models read (ISO 639-1). English is the Latin alphabet without accents;
+/// Thai also reads Latin letters and digits. Thai needs the Thai model files.
+pub const LANGUAGES: &[(&str, &str)] = &[("en", "English"), ("th", "ไทย (Thai)")];
 
 #[derive(Debug, thiserror::Error)]
 pub enum OcrError {
@@ -31,6 +38,8 @@ pub enum OcrError {
     Recognize(String),
     #[error("the image is empty")]
     EmptyImage,
+    #[error("the Thai text recognition model is not installed (run `cargo xtask models`, or set PDFKUB_MODELS)")]
+    NoThaiModel,
 }
 
 /// Where the two model files are.
@@ -38,12 +47,16 @@ pub enum OcrError {
 pub struct Models {
     pub detection: PathBuf,
     pub recognition: PathBuf,
+    /// The Thai recogniser and its configuration, when installed.
+    pub thai: Option<(PathBuf, PathBuf)>,
 }
 
 impl Models {
     /// The models in `dir`, if both files are there.
     pub fn in_dir(dir: &Path) -> Option<Models> {
-        let m = Models { detection: dir.join(DETECTION_MODEL), recognition: dir.join(RECOGNITION_MODEL) };
+        let thai = (dir.join(THAI_RECOGNITION_MODEL), dir.join(THAI_RECOGNITION_CONFIG));
+        let thai = (thai.0.is_file() && thai.1.is_file()).then_some(thai);
+        let m = Models { detection: dir.join(DETECTION_MODEL), recognition: dir.join(RECOGNITION_MODEL), thai };
         (m.detection.is_file() && m.recognition.is_file()).then_some(m)
     }
 
@@ -90,6 +103,7 @@ impl Line {
 /// A loaded recogniser. Loading takes a moment; keep one and reuse it.
 pub struct Ocr {
     engine: ocrs::OcrEngine,
+    thai: Option<thai::Recognizer>,
 }
 
 impl Ocr {
@@ -101,12 +115,79 @@ impl Ocr {
             ..Default::default()
         };
         let engine = ocrs::OcrEngine::new(params).map_err(|e| OcrError::Load("ocr engine".into(), e.to_string()))?;
-        Ok(Ocr { engine })
+        let thai = match &models.thai {
+            Some((model, config)) => Some(thai::Recognizer::load(model, config)?),
+            None => None,
+        };
+        Ok(Ocr { engine, thai })
     }
 
     /// Load the models found by [`Models::find`].
     pub fn find() -> Result<Ocr, OcrError> {
         Self::load(&Models::find().ok_or(OcrError::NoModels)?)
+    }
+
+    /// Whether `language` (a code from [`LANGUAGES`]) can be read with the installed models.
+    pub fn reads(&self, language: &str) -> bool {
+        language != "th" || self.thai.is_some()
+    }
+
+    /// Recognise the text in an RGBA (or RGB, or grey) image, `width` × `height` pixels, in
+    /// `language` (a code from [`LANGUAGES`]). Thai lines come back as one word per line.
+    pub fn recognize_in(&self, pixels: &[u8], width: u32, height: u32, language: &str) -> Result<Vec<Line>, OcrError> {
+        if language != "th" {
+            return self.recognize(pixels, width, height);
+        }
+        let thai = self.thai.as_ref().ok_or(OcrError::NoThaiModel)?;
+        if width == 0 || height == 0 || pixels.is_empty() {
+            return Err(OcrError::EmptyImage);
+        }
+        let rgb = to_rgb(pixels, width, height);
+        let err = |e: &dyn std::fmt::Display| OcrError::Recognize(e.to_string());
+        let source = ocrs::ImageSource::from_bytes(&rgb, (width, height)).map_err(|e| err(&e))?;
+        let input = self.engine.prepare_input(source).map_err(|e| err(&e))?;
+        let found = self.engine.detect_words(&input).map_err(|e| err(&e))?;
+        use rten_imageproc::BoundingRect as _;
+        let mut out = Vec::new();
+        for line in self.engine.find_text_lines(&input, &found) {
+            // The line's box: the union of its words' boxes.
+            let mut b = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+            for w in &line {
+                let r = w.bounding_rect();
+                b = [b[0].min(r.left()), b[1].min(r.top()), b[2].max(r.right()), b[3].max(r.bottom())];
+            }
+            if !(b[2] > b[0] && b[3] > b[1]) {
+                continue;
+            }
+            // The Thai model reads a line best whole, but a very long one loses letters: split
+            // it, between the pieces ocrs found, into runs at most MAX_RUN line-heights long.
+            const MAX_RUN: f32 = 22.0;
+            let line_h = b[3] - b[1];
+            let mut runs: Vec<[f32; 4]> = Vec::new();
+            for w in &line {
+                let r = w.bounding_rect();
+                let rect = [r.left(), r.top(), r.right(), r.bottom()];
+                match runs.last_mut() {
+                    Some(run) if rect[2] - run[0] <= MAX_RUN * line_h => {
+                        *run = [run[0].min(rect[0]), run[1].min(rect[1]), run[2].max(rect[2]), run[3].max(rect[3])];
+                    }
+                    _ => runs.push(rect),
+                }
+            }
+            let mut words = Vec::new();
+            for rect in runs {
+                // Read with the full line height, so marks above and below stay in.
+                let rect = [rect[0], b[1], rect[2], b[3]];
+                let text = thai.read_line(&rgb, width, height, rect)?;
+                if !text.trim().is_empty() {
+                    words.push(Word { text: text.trim().to_owned(), rect });
+                }
+            }
+            if !words.is_empty() {
+                out.push(Line { words });
+            }
+        }
+        Ok(out)
     }
 
     /// Recognise the text in an RGBA (or RGB, or grey) image, `width` × `height` pixels.
@@ -142,6 +223,147 @@ impl Ocr {
             })
             .filter(|l| !l.words.is_empty())
             .collect())
+    }
+}
+
+/// RGB bytes from RGBA, RGB or grey pixels.
+fn to_rgb(pixels: &[u8], width: u32, height: u32) -> Vec<u8> {
+    let n = width as usize * height as usize;
+    if pixels.len() == n * 4 {
+        pixels.as_chunks::<4>().0.iter().flat_map(|p| [p[0], p[1], p[2]]).collect()
+    } else if pixels.len() == n {
+        pixels.iter().flat_map(|&g| [g, g, g]).collect()
+    } else {
+        pixels.to_vec()
+    }
+}
+
+mod thai {
+    //! PaddleOCR PP-OCRv5 line recognition: a 48-pixel-high BGR crop normalised to [-1, 1] in, a
+    //! probability per class and step out, decoded greedily (CTC). Class 0 is the blank, then
+    //! the character list, then a space.
+
+    use std::path::Path;
+
+    use rten_tensor::NdTensor;
+    use rten_tensor::prelude::*;
+
+    use super::OcrError;
+
+    const HEIGHT: usize = 48;
+    /// Longest crop fed to the model (a very long line is squeezed rather than cut).
+    const MAX_WIDTH: usize = 3200;
+
+    pub struct Recognizer {
+        model: rten::Model,
+        chars: Vec<String>,
+    }
+
+    impl Recognizer {
+        pub fn load(model: &Path, config: &Path) -> Result<Recognizer, OcrError> {
+            let load_err = |p: &Path, e: &dyn std::fmt::Display| OcrError::Load(p.display().to_string(), e.to_string());
+            let yml = std::fs::read_to_string(config).map_err(|e| load_err(config, &e))?;
+            let chars = character_list(&yml);
+            if chars.is_empty() {
+                return Err(load_err(config, &"no character_dict"));
+            }
+            let model = rten::Model::load_file(model).map_err(|e| load_err(model, &e))?;
+            Ok(Recognizer { model, chars })
+        }
+
+        /// Read the text in `rect` (`[left, top, right, bottom]` pixels) of an RGB image.
+        pub fn read_line(&self, rgb: &[u8], width: u32, height: u32, rect: [f32; 4]) -> Result<String, OcrError> {
+            // A little room around the detected box: detection boxes hug the ink, and the Thai
+            // vowels and tone marks above and below the line need to stay in.
+            let h = rect[3] - rect[1];
+            let pad_x = h * 0.35;
+            let pad_y = h * 0.25;
+            let x0 = (rect[0] - pad_x).max(0.0);
+            let y0 = (rect[1] - pad_y).max(0.0);
+            let x1 = (rect[2] + pad_x).min(width as f32);
+            let y1 = (rect[3] + pad_y).min(height as f32);
+            let (cw, ch) = (x1 - x0, y1 - y0);
+            if cw < 2.0 || ch < 2.0 {
+                return Ok(String::new());
+            }
+            let out_w = ((cw / ch * HEIGHT as f32).round() as usize).clamp(HEIGHT / 2, MAX_WIDTH);
+            let mut input = NdTensor::<f32, 4>::zeros([1, 3, HEIGHT, out_w]);
+            let (w, hgt) = (width as usize, height as usize);
+            let px = |x: usize, y: usize, c: usize| f32::from(rgb.get((y.min(hgt - 1) * w + x.min(w - 1)) * 3 + c).copied().unwrap_or(255));
+            for oy in 0..HEIGHT {
+                let sy = y0 + (oy as f32 + 0.5) * ch / HEIGHT as f32 - 0.5;
+                let (ya, fy) = (sy.floor().max(0.0) as usize, (sy - sy.floor()).clamp(0.0, 1.0));
+                for ox in 0..out_w {
+                    let sx = x0 + (ox as f32 + 0.5) * cw / out_w as f32 - 0.5;
+                    let (xa, fx) = (sx.floor().max(0.0) as usize, (sx - sx.floor()).clamp(0.0, 1.0));
+                    // Bilinear, then BGR channel order as the model was trained with.
+                    for (plane, c) in [(0, 2), (1, 1), (2, 0)] {
+                        let v = px(xa, ya, c) * (1.0 - fx) * (1.0 - fy)
+                            + px(xa + 1, ya, c) * fx * (1.0 - fy)
+                            + px(xa, ya + 1, c) * (1.0 - fx) * fy
+                            + px(xa + 1, ya + 1, c) * fx * fy;
+                        input[[0, plane, oy, ox]] = (v / 255.0 - 0.5) / 0.5;
+                    }
+                }
+            }
+            let out = self.model.run_one(input.into(), None).map_err(|e| OcrError::Recognize(e.to_string()))?;
+            let probs: NdTensor<f32, 3> = out.try_into().map_err(|e: rten::TryFromValueError| OcrError::Recognize(e.to_string()))?;
+            let probs = probs.slice(0);
+            Ok(self.decode(probs))
+        }
+
+        /// Greedy CTC: the best class at each step, repeats merged, blanks dropped.
+        fn decode(&self, probs: rten_tensor::NdTensorView<f32, 2>) -> String {
+            let classes = probs.size(1);
+            let mut text = String::new();
+            let mut last = 0usize;
+            for t in 0..probs.size(0) {
+                let mut best = (0usize, f32::MIN);
+                for c in 0..classes {
+                    let p = probs[[t, c]];
+                    if p > best.1 {
+                        best = (c, p);
+                    }
+                }
+                let c = best.0;
+                if c != 0 && c != last {
+                    match self.chars.get(c - 1) {
+                        Some(ch) => text.push_str(ch),
+                        // The class after the list is the space.
+                        None if c == self.chars.len() + 1 => text.push(' '),
+                        None => {}
+                    }
+                }
+                last = c;
+            }
+            text
+        }
+    }
+
+    /// The `character_dict` list of a PaddleOCR `inference.yml`: one entry per `- ` line, plain
+    /// or in single quotes (`''` is a quote).
+    pub fn character_list(yml: &str) -> Vec<String> {
+        let mut lines = yml.lines().skip_while(|l| !l.trim_start().starts_with("character_dict:"));
+        lines.next();
+        let mut out = Vec::new();
+        for l in lines {
+            let Some(item) = l.trim_start().strip_prefix("- ").or_else(|| (l.trim() == "-").then_some("")) else { break };
+            let item = match item.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')) {
+                Some(inner) if item.len() >= 2 => inner.replace("''", "'"),
+                _ => item.to_owned(),
+            };
+            out.push(item);
+        }
+        out
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn the_character_list_is_read_from_the_yaml() {
+            let yml = "PostProcess:\n  name: CTCLabelDecode\n  character_dict:\n  - '!'\n  - ''''\n  - '\"'\n  - A\n  - ก\nOther: 1\n";
+            assert_eq!(super::character_list(yml), ["!", "'", "\"", "A", "ก"]);
+        }
     }
 }
 
@@ -181,8 +403,41 @@ fn num(v: f64) -> String {
 /// WinAnsiEncoding), each word stretched to its box so selection and search highlight the
 /// right place. Marked content `/OCR` so it can be told apart from the page's own text.
 pub fn text_layer(words: &[PlacedWord]) -> Vec<u8> {
+    text_layer_with(words, "", &[])
+}
+
+/// A word already encoded for an embedded font: its character codes and its width in ems.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EncodedWord {
+    pub codes: Vec<u16>,
+    pub width: f64,
+}
+
+/// The embedded font's ascender and descender used to fit an encoded word's box (Sarabun's
+/// typographic metrics).
+const EMBED_BOX_EM: f64 = 1.3;
+const EMBED_DESCENT: f64 = 0.232;
+
+/// [`text_layer`] where `encoded[i]`, when present, draws word `i` with the embedded font
+/// `font` (a Type0 font with 2-byte codes, e.g. Sarabun for Thai) instead of Helvetica.
+pub fn text_layer_with(words: &[PlacedWord], font: &str, encoded: &[Option<EncodedWord>]) -> Vec<u8> {
     let mut out = b"/OCR BMC\nBT\n3 Tr\n/PCHelv 1 Tf\n".to_vec();
-    for w in words {
+    for (i, w) in words.iter().enumerate() {
+        if let Some(Some(e)) = encoded.get(i)
+            && !font.is_empty()
+        {
+            let height = w.up[0].hypot(w.up[1]);
+            if e.width <= 0.0 || height <= 0.0 {
+                continue;
+            }
+            let em = [w.up[0] / EMBED_BOX_EM, w.up[1] / EMBED_BOX_EM];
+            let ax = [w.across[0] / e.width, w.across[1] / e.width];
+            let o = [w.origin[0] + em[0] * EMBED_DESCENT, w.origin[1] + em[1] * EMBED_DESCENT];
+            let m: Vec<String> = [ax[0], ax[1], em[0], em[1], o[0], o[1]].iter().map(|v| num(*v)).collect();
+            let hex: String = e.codes.iter().map(|c| format!("{c:04X}")).collect();
+            out.extend(format!("/{font} 1 Tf {} Tm <{hex}> Tj /PCHelv 1 Tf\n", m.join(" ")).bytes());
+            continue;
+        }
         let width = helvetica_width(&w.text, 1.0);
         let height = w.up[0].hypot(w.up[1]);
         if width <= 0.0 || height <= 0.0 {

@@ -90,13 +90,32 @@ Copy-Item (Join-Path $Bin 'pdfkub.exe'), (Join-Path $Bin 'pdfkub-cli.exe') $Stag
 
 & (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'pdfkub.exe') (Join-Path $Stage 'pdfkub-cli.exe')
 
+# OCR models (cargo xtask models, or $env:PDFKUB_MODELS): shipped in models\ beside the exe, where
+# pdfcraft-ocr looks first, with their licence texts. Without them the MSI still builds, and
+# Recognize text says the models are missing.
+$ModelsSrc = if ($env:PDFKUB_MODELS) { $env:PDFKUB_MODELS } else { Join-Path $Root 'assets\models' }
+$ModelFiles = 'text-detection.rten', 'text-recognition.rten', 'thai-recognition.onnx', 'thai-recognition.yml'
+$WixModels = @()
+if (@($ModelFiles | Where-Object { -not (Test-Path (Join-Path $ModelsSrc $_)) }).Count -eq 0) {
+  $ModelsStage = Join-Path $Stage 'models'
+  New-Item -ItemType Directory -Force -Path $ModelsStage | Out-Null
+  foreach ($f in $ModelFiles) {
+    Copy-Item (Join-Path $ModelsSrc $f) $ModelsStage
+    Copy-Item (Join-Path $ModelsSrc "$f.LICENCE.txt") $ModelsStage -ErrorAction SilentlyContinue
+  }
+  $WixModels = @('-d', "ModelsDir=$ModelsStage")
+  Write-Output "OCR models included from $ModelsSrc"
+} else {
+  Write-Warning "OCR models not found in $ModelsSrc (run cargo xtask models): the package has no text recognition"
+}
+
 # ---- MSI ---------------------------------------------------------------------------------------
 $Msi = Join-Path $Dist "pdfkub-$Version-windows-$Arch.msi"
 Invoke-Native 'wix build' {
   wix build (Join-Path $PSScriptRoot 'pdfkub.wxs') -arch $Arch `
     (Join-Path $PSScriptRoot 'installer-ui.wxs') `
     -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\pdfkub.ico')" `
-    -o $Msi
+    @WixModels -o $Msi
 }
 # Inspect the built MSI, not just the XML, before signing/publishing it. In a child process, so
 # its Windows Installer database handle is gone before signtool opens the MSI.
@@ -110,6 +129,7 @@ $Portable = Join-Path $TargetDir "windows-package\pdfkub-$Version-windows-$Arch-
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
+if (Test-Path (Join-Path $Stage 'models')) { Copy-Item (Join-Path $Stage 'models') $Portable -Recurse }
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE') {
   $p = Join-Path $Root $f
   if (Test-Path $p) { Copy-Item $p $Portable }

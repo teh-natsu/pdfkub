@@ -50,8 +50,30 @@
 
     <Feature Id="Main" Title="PdfKub" Level="1">
       <ComponentGroupRef Id="PdfkubFiles" />
+<?ifdef ModelsDir?>
+      <ComponentGroupRef Id="PdfkubModels" />
+<?endif?>
     </Feature>
   </Package>
+
+<?ifdef ModelsDir?>
+  <!-- Text recognition models (Scan & OCR): ocrs's English models and PaddleOCR's Thai one, in
+       models\ beside pdfkub.exe where pdfcraft-ocr looks for them, with their licence texts. -->
+  <Fragment>
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Directory Id="ModelsFolder" Name="models" />
+    </DirectoryRef>
+    <ComponentGroup Id="PdfkubModels" Directory="ModelsFolder">
+      <Component Id="ModelTextDetection"><File Id="TextDetection" Source="$(var.ModelsDir)\text-detection.rten" KeyPath="yes" /></Component>
+      <Component Id="ModelTextDetectionLicence"><File Id="TextDetectionLicence" Source="$(var.ModelsDir)\text-detection.rten.LICENCE.txt" KeyPath="yes" /></Component>
+      <Component Id="ModelTextRecognition"><File Id="TextRecognition" Source="$(var.ModelsDir)\text-recognition.rten" KeyPath="yes" /></Component>
+      <Component Id="ModelTextRecognitionLicence"><File Id="TextRecognitionLicence" Source="$(var.ModelsDir)\text-recognition.rten.LICENCE.txt" KeyPath="yes" /></Component>
+      <Component Id="ModelThaiRecognition"><File Id="ThaiRecognition" Source="$(var.ModelsDir)\thai-recognition.onnx" KeyPath="yes" /></Component>
+      <Component Id="ModelThaiRecognitionLicence"><File Id="ThaiRecognitionLicence" Source="$(var.ModelsDir)\thai-recognition.onnx.LICENCE.txt" KeyPath="yes" /></Component>
+      <Component Id="ModelThaiConfig"><File Id="ThaiConfig" Source="$(var.ModelsDir)\thai-recognition.yml" KeyPath="yes" /></Component>
+    </ComponentGroup>
+  </Fragment>
+<?endif?>
 
   <Fragment>
     <ComponentGroup Id="PdfkubFiles" Directory="INSTALLFOLDER">
@@ -74,7 +96,7 @@
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\pdfkub.exe\SupportedTypes" Name=".pdf" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\pdfkub.exe\shell\open\command" Value="&quot;[#PdfkubExe]&quot; &quot;%1&quot;" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Capabilities" Name="ApplicationName" Value="PdfKub" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\PdfKub\Capabilities" Name="ApplicationDescription" Value="Open-source PDF workbench" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\PdfKub\Capabilities" Name="ApplicationDescription" Value="PDF workbench" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Capabilities" Name="ApplicationIcon" Value="[#PdfkubExe],0" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Capabilities\FileAssociations" Name=".pdf" Value="PdfKub.Document" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\RegisteredApplications" Name="PdfKub" Value="Software\PdfKub\Capabilities" Type="string" />

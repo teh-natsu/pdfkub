@@ -1551,7 +1551,27 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
         }
         Edit::SetDocumentScript { name, script } => pdfcraft_forms::set_document_script(doc, name, script.as_deref())?,
         Edit::AddOcrText { page, words } => {
-            pdfcraft_edit::stamp(doc, *page, "OCR", pdfcraft_ocr::text_layer(words))?;
+            if words.iter().all(|w| pdfcraft_fonts::win_ansi_covers(&w.text)) {
+                pdfcraft_edit::stamp(doc, *page, "OCR", pdfcraft_ocr::text_layer(words))?;
+            } else {
+                // Thai (or other non-WinAnsi) words: encoded for embedded Sarabun, so copying and
+                // searching the recognised text gives the right characters.
+                let face = pdfcraft_fonts::EmbedFace::sarabun(false, false);
+                let font = pdfcraft_fonts::embedded_font(doc, &face).map_err(|e| EditError::Invalid(e.to_string()))?;
+                let mut encoded = Vec::with_capacity(words.len());
+                for w in words {
+                    encoded.push(if pdfcraft_fonts::win_ansi_covers(&w.text) {
+                        None
+                    } else {
+                        let shaped = face.shape(&w.text);
+                        let codes = face.codes(doc, font, &w.text, &shaped).map_err(|e| EditError::Invalid(e.to_string()))?;
+                        Some(pdfcraft_ocr::EncodedWord { codes, width: shaped.advance / shaped.units_per_em })
+                    });
+                }
+                let name = format!("PCE{}", font.num);
+                pdfcraft_edit::stamp(doc, *page, "OCR", pdfcraft_ocr::text_layer_with(words, &name, &encoded))?;
+                pdfcraft_edit::add_font(doc, *page, &name, font)?;
+            }
         }
         Edit::EditPageImage { page, index, change } => {
             let img = pdfcraft_edit::page_images(doc, *page)?

@@ -32,7 +32,9 @@ pub struct OcrDraft {
 
 impl Default for OcrDraft {
     fn default() -> Self {
-        OcrDraft { pages: OcrPages::All, from: 1, to: 1, language: "en".into(), dpi: 300 }
+        // Thai when the Thai model is installed: it reads Latin letters and digits too.
+        let language = if pdfcraft_engine::ocr::Models::find().is_some_and(|m| m.thai.is_some()) { "th" } else { "en" };
+        OcrDraft { pages: OcrPages::All, from: 1, to: 1, language: language.into(), dpi: 300 }
     }
 }
 

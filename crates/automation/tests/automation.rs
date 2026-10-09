@@ -2282,6 +2282,33 @@ fn ocr_tools_make_a_scan_searchable() {
     assert!(matches!(a.call("ocr_recognize", &json!({ "doc": scan, "language": "xx" })), Err(ToolError::InvalidArgs(_))));
 }
 
+/// Thai OCR (with the Thai model installed): a scanned Thai page becomes searchable, and the
+/// recognised Thai reads back from the text layer.
+#[test]
+fn thai_ocr_makes_a_thai_scan_searchable() {
+    let dir = workdir("ocr-thai");
+    let mut a = auto(&dir);
+    let status = ok(&mut a, "ocr_status", json!({}));
+    if status["available"] != true || !pdfcraft_engine::ocr::Models::find().is_some_and(|m| m.thai.is_some()) {
+        eprintln!("skipped: Thai OCR model not installed");
+        return;
+    }
+    let page = ok(&mut a, "doc_create", json!({ "from": "blank", "width": 595, "height": 300 }))["doc"].as_u64().unwrap();
+    let lines = ["บันทึกข้อความ", "เรื่อง ขออนุมัติโครงการก่อสร้างถนน", "เรียน ผู้ว่าราชการจังหวัด"];
+    ok(&mut a, "page_add_text", json!({ "doc": page, "page": 1, "text": lines.join("\n"), "at": [40, 40], "width": 500, "size": 18 }));
+    ok(&mut a, "doc_export_images", json!({ "doc": page, "folder": "scan", "dpi": 200, "pages": [1] }));
+    let png = std::fs::read_dir(dir.join("scan")).unwrap().next().unwrap().unwrap().path();
+    let scan = ok(&mut a, "doc_create", json!({ "from": "images", "paths": [png.to_string_lossy()] }))["doc"].as_u64().unwrap();
+    let r = ok(&mut a, "ocr_recognize", json!({ "doc": scan, "language": "th" }));
+    let read = r["pages"][0]["text"].as_str().unwrap().to_owned();
+    for line in lines {
+        assert!(read.contains(line), "{line:?} in {read:?}");
+    }
+    // The text layer gives the same Thai back (embedded font, not WinAnsi question marks).
+    let extracted = page_text(&mut a, scan)[0].clone();
+    assert!(extracted.contains("ขออนุมัติโครงการ") && !extracted.contains('?'), "{extracted}");
+}
+
 #[test]
 fn ocr_recognize_files_writes_searchable_copies() {
     let dir = workdir("ocr-files");

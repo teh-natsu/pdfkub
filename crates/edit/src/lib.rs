@@ -296,6 +296,20 @@ fn add_resources(doc: &mut Document, page: &pdfcraft_model::Page, opacity: Optio
     Ok(())
 }
 
+/// Make the font `r` available to `page`'s content as `/name` (the page gets its own copy of its
+/// resources, as [`stamp`] does).
+pub fn add_font(doc: &mut Document, page: usize, name: &str, r: pdfcraft_cos::ObjRef) -> Result<(), EditError> {
+    let all = page_list(doc);
+    check(&[page], all.len())?;
+    let p = &all[page];
+    let mut res = p.dict.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
+    let mut fonts = res.get(b"Font").map(|f| doc.resolve(f)).and_then(|f| f.as_dict().cloned()).unwrap_or_default();
+    fonts.set(name.as_bytes().to_vec(), Object::Ref(r));
+    res.set(b"Font".to_vec(), Object::Dict(fonts));
+    doc.update_dict(p.obj, |d| d.set(b"Resources".to_vec(), Object::Dict(res)))?;
+    Ok(())
+}
+
 const WRAP_OPEN: &[u8] = b"q %PdfKub\n";
 const WRAP_CLOSE: &[u8] = b"Q %PdfKub\n";
 

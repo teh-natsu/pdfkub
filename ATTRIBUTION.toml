@@ -2988,6 +2988,32 @@ kind = "model"
 usage = "Scan & OCR: reads the words it finds (cargo xtask models)"
 sha256 = "e484866d4cce403175bd8d00b128feb08ab42e208de30e42cd9889d8f1735a6e"
 
+[[fetched]]
+file = "thai-recognition.onnx"
+url = "https://huggingface.co/PaddlePaddle/th_PP-OCRv5_mobile_rec_onnx/resolve/main/inference.onnx"
+title = "PaddleOCR PP-OCRv5 Thai text recognition model (ONNX)"
+author = "PaddlePaddle Authors (PaddleOCR)"
+source = "https://huggingface.co/PaddlePaddle/th_PP-OCRv5_mobile_rec_onnx (model card: apache-2.0)"
+licence = "Apache-2.0"
+licence_url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+licence_sha256 = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+kind = "model"
+usage = "Scan & OCR: reads Thai text lines (cargo xtask models)"
+sha256 = "27618be66018f8598ac0a526a593f9f1cebf794e7eded93428e8fb016e537f5f"
+
+[[fetched]]
+file = "thai-recognition.yml"
+url = "https://huggingface.co/PaddlePaddle/th_PP-OCRv5_mobile_rec_onnx/resolve/main/inference.yml"
+title = "PaddleOCR PP-OCRv5 Thai recognition configuration (character list)"
+author = "PaddlePaddle Authors (PaddleOCR)"
+source = "https://huggingface.co/PaddlePaddle/th_PP-OCRv5_mobile_rec_onnx (model card: apache-2.0)"
+licence = "Apache-2.0"
+licence_url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+licence_sha256 = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+kind = "model"
+usage = "Scan & OCR: the characters the Thai model reads (cargo xtask models)"
+sha256 = "f6ba7fefc38ca1ff398ddafa75d67d16e0b3757c4e6c833adffee98a981766c9"
+
 [[build_input]]
 name = "craft-fonts"
 option = "CRAFT_FONTS_DIR"
