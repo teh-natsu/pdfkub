@@ -1,4 +1,5 @@
-//! Project links: the Help menu, About dialog and home screen open PdfKub's GitHub page.
+//! PdfKub shows no project links or open-source notices in the app. About credits upstream in
+//! plain text ("Based on PdfCraft by the ArtCraft team.").
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -16,31 +17,26 @@ fn harness(setup: impl FnOnce(&mut PdfKubApp) + 'static) -> Harness<'static, Pdf
 }
 
 #[test]
-fn home_screen_links() {
-    let mut h = harness(|_| {});
-    h.get_by_label("Source code, releases and issue reports.");
-    h.get_by_label("PdfKub on GitHub").click();
-    h.run_steps(2);
-    assert_eq!(h.state().last_opened_url.as_deref(), Some("https://github.com/teh-natsu/pdfkub"));
+fn home_screen_has_no_project_links() {
+    let h = harness(|_| {});
+    h.get_by_label("Welcome to PdfKub");
+    h.get_by_label("A PDF workbench — local, private, and scriptable.");
+    for gone in ["PdfKub on GitHub", "PdfKub is open source"] {
+        assert_eq!(h.query_all_by_label(gone).count(), 0, "{gone}");
+    }
 }
 
 #[test]
-fn about_dialog_shows_the_app_and_links() {
-    let pdf = b"%PDF-1.7
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >> endobj
-trailer << /Root 1 0 R >>
-%%EOF";
-    // With a document open, so the home screen's own links are not on screen.
-    let mut h = harness(move |app| {
+fn about_dialog_credits_pdfkub_without_links() {
+    let pdf = b"%PDF-1.7\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF";
+    // With a document open, so the home screen is not on screen.
+    let h = harness(move |app| {
         app.open_bytes("one.pdf", None, pdf.to_vec()).unwrap();
         app.dialog = Some(Dialog::About);
     });
     h.get_by_label("Based on PdfCraft by the ArtCraft team.");
-    h.get_by_label("PdfKub on GitHub").click();
-    h.run_steps(2);
-    assert_eq!(h.state().last_opened_url.as_deref(), Some(links::GITHUB));
+    assert_eq!(h.query_all_by_label("PdfKub on GitHub").count(), 0);
+    assert!(links::LINKS.is_empty());
 }
 
 #[test]

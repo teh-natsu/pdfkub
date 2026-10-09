@@ -1,12 +1,8 @@
-//! Where PdfKub lives on the web. One table, so the Help menu, the About dialog, the home screen,
-//! the CLI and the README agree.
+//! Web addresses: the links the Help menu may open (none at the moment) and the checks for
+//! addresses that documents ask to open.
 
 use icu_properties::props::Script;
 
-/// The app's name in its URLs (`github.com/teh-natsu/{APP}`).
-pub const APP: &str = "pdfkub";
-
-pub const GITHUB: &str = "https://github.com/teh-natsu/pdfkub";
 /// PdfKub is based on PdfCraft by the ArtCraft team (NOTICE).
 pub const UPSTREAM: &str = "https://github.com/storytold/pdfcraft";
 
@@ -20,8 +16,8 @@ pub struct Link {
     pub icon: &'static str,
 }
 
-/// In the order they are shown.
-pub const LINKS: &[Link] = &[Link { command: "help.github", label: "PdfKub on GitHub", url: GITHUB, icon: "code-xml" }];
+/// In the order they are shown. PdfKub shows no project links in the app.
+pub const LINKS: &[Link] = &[];
 
 pub fn for_command(id: &str) -> Option<&'static Link> {
     LINKS.iter().find(|l| l.command == id)
@@ -334,8 +330,7 @@ fn mixes_scripts(label: &str) -> bool {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn urls_follow_the_app_name() {
-        assert_eq!(super::GITHUB, format!("https://github.com/teh-natsu/{}", super::APP));
+    fn links_are_https_and_registered_commands() {
         for l in super::LINKS {
             assert!(l.url.starts_with("https://"), "{}", l.url);
             assert!(crate::commands::command(l.command).is_some(), "{} is a registered command", l.command);

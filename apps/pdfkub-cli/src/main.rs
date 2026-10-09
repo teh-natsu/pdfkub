@@ -45,26 +45,24 @@ use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind, in
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let result =
-        match args.first().map(String::as_str) {
-            Some("info") => info(&args[1..]),
-            Some("render") => render(&args[1..]),
-            Some("text") => text(&args[1..]),
-            Some("edit") => edit(&args[1..]),
-            Some("combine") => combine(&args[1..]),
-            Some("extract") => extract(&args[1..]),
-            Some("split") => split(&args[1..]),
-            Some("check") => check(&args[1..]),
-            Some("check-one") => check_one(&args[1..]),
-            Some("tools") => tools(),
-            Some("run") => run(&args[1..]),
-            Some("ui") => ui(&args[1..]),
-            #[cfg(feature = "mcp")]
-            Some("mcp") => mcp(&args[1..]),
-            Some("--version") => version(),
-            _ => Err("usage: pdfkub-cli <info|render|text|edit|combine|extract|split|check|tools|run|mcp|ui> …  (see source header for options)\nissues and feedback: https://github.com/teh-natsu/pdfkub/issues"
-                .into()),
-        };
+    let result = match args.first().map(String::as_str) {
+        Some("info") => info(&args[1..]),
+        Some("render") => render(&args[1..]),
+        Some("text") => text(&args[1..]),
+        Some("edit") => edit(&args[1..]),
+        Some("combine") => combine(&args[1..]),
+        Some("extract") => extract(&args[1..]),
+        Some("split") => split(&args[1..]),
+        Some("check") => check(&args[1..]),
+        Some("check-one") => check_one(&args[1..]),
+        Some("tools") => tools(),
+        Some("run") => run(&args[1..]),
+        Some("ui") => ui(&args[1..]),
+        #[cfg(feature = "mcp")]
+        Some("mcp") => mcp(&args[1..]),
+        Some("--version") => version(),
+        _ => Err("usage: pdfkub-cli <info|render|text|edit|combine|extract|split|check|tools|run|mcp|ui> …  (see source header for options)".into()),
+    };
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(CliError::Stdout(e)) if e.kind() == std::io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
@@ -110,7 +108,6 @@ fn stdout_line(line: std::fmt::Arguments<'_>) -> Result<(), CliError> {
 
 fn version() -> Result<(), CliError> {
     stdout_line(format_args!("pdfkub-cli {}", env!("CARGO_PKG_VERSION")))?;
-    stdout_line(format_args!("Source:  {}", pdfcraft_engine::links::GITHUB))?;
     stdout_line(format_args!("Based on PdfCraft by the ArtCraft team: {}", pdfcraft_engine::links::UPSTREAM))?;
     Ok(())
 }

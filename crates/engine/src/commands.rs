@@ -327,7 +327,6 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("page.split", "Split document…", PAGES, None, Assembly, "scissors"),
     c("page.number", "Number pages…", PAGES, None, Assembly, "hash"),
     c("help.shortcuts", "Keyboard shortcuts", HELP, None, Nothing, "circle-help"),
-    c("help.github", "PdfKub on GitHub", HELP, None, Nothing, "code-xml"),
     c("help.check_updates", "Check for updates…", HELP, None, Nothing, "cloud"),
     c("help.about", "About PdfKub", HELP, None, Nothing, "info"),
 ];

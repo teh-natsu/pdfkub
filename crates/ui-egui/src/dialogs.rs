@@ -1066,7 +1066,6 @@ pub fn show(app: &mut PdfKubApp, ctx: &egui::Context) {
                             });
                         });
                         ui.add_space(6.0);
-                        ui.label(tl!("A clean-room, open-source PDF application written in Rust. MIT OR Apache-2.0."));
                         ui.label(
                             egui::RichText::new(
                                 "Rendering: hayro (bootstrap) · UI: egui · Icons: Lucide (ISC) · Fonts: Inter, JetBrains Mono, Dancing Script (OFL)",
@@ -1076,10 +1075,6 @@ pub fn show(app: &mut PdfKubApp, ctx: &egui::Context) {
                         );
                         ui.add_space(12.0);
                         ui.label(egui::RichText::new(tl!("Based on PdfCraft by the ArtCraft team.")).color(t.text_muted));
-                        ui.add_space(6.0);
-                        if let Some(cmd) = widgets::community_links(ui) {
-                            link_command = Some(cmd);
-                        }
                     }
                 }
             }

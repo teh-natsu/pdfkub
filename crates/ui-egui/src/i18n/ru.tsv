@@ -137,7 +137,7 @@
 	Previous page	Предыдущая страница
 	Current page — type a page number or label (such as iv) and press Enter	Текущая страница — введите номер или метку страницы (например, iv) и нажмите Enter
 	Welcome to PdfKub	Добро пожаловать в PdfKub
-	An open-source PDF workbench — local, private, and scriptable.	Открытый PDF-редактор — локальный, приватный и программируемый.
+	A PDF workbench — local, private, and scriptable.	PDF-редактор — локальный, приватный и программируемый.
 	Recommended tools	Рекомендуемые инструменты
 	Use now	Использовать сейчас
 	Open file	Открыть файл
@@ -277,7 +277,6 @@
 	Split document…	Разделить документ…
 	Number pages…	Пронумеровать страницы…
 	Keyboard shortcuts	Горячие клавиши
-	PdfKub on GitHub	PdfKub на GitHub
 	Check for updates…	Проверить обновления…
 	About PdfKub	О программе PdfKub
 	Export a PDF	Экспортировать PDF
@@ -1333,7 +1332,6 @@
 	Recover	Восстановить
 	Discard	Отклонить
 	Version {v}	Версия {v}
-	A clean-room, open-source PDF application written in Rust. MIT OR Apache-2.0.	Открытое PDF-приложение с чистой комнатой, написанное на Rust. MIT OR Apache-2.0.
 	Summarize Options	Параметры суммирования
 	Choose a layout:	Выберите макет:
 	Comments only	Только комментарии
@@ -1988,5 +1986,3 @@
 	Created a PDF from the first {n} files	PDF создан из первых файлов: {n}
 	Go to page…	Перейти на страницу…
 	Based on PdfCraft by the ArtCraft team.	Основано на PdfCraft от команды ArtCraft.
-	PdfKub is open source	PdfKub — проект с открытым исходным кодом
-	Source code, releases and issue reports.	Исходный код, выпуски и сообщения о проблемах.

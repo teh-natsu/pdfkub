@@ -145,7 +145,7 @@
 	Previous page	前のページ
 	Current page — type a page number or label (such as iv) and press Enter	現在のページ：ページ番号またはラベル（例：iv）を入力して Enter
 	Welcome to PdfKub	PdfKub へようこそ
-	An open-source PDF workbench — local, private, and scriptable.	ローカルで処理し、プライバシーを守る、スクリプト対応のオープンソース PDF ツール。
+	A PDF workbench — local, private, and scriptable.	ローカルで処理し、プライバシーを守る、スクリプト対応の PDF ツール。
 	Recommended tools	おすすめのツール
 	Use now	使用する
 	Open file	ファイルを開く
@@ -285,7 +285,6 @@
 	Split document…	文書を分割…
 	Number pages…	ページ番号を設定…
 	Keyboard shortcuts	キーボードショートカット
-	PdfKub on GitHub	GitHub の PdfKub
 	Check for updates…	更新を確認…
 	About PdfKub	PdfKub について
 	Export a PDF	PDF を書き出す
@@ -1341,7 +1340,6 @@
 	Recover	復元
 	Discard	破棄
 	Version {v}	バージョン {v}
-	A clean-room, open-source PDF application written in Rust. MIT OR Apache-2.0.	Rust で記述したクリーンルーム方式のオープンソース PDF アプリケーション。MIT OR Apache-2.0。
 	Summarize Options	一覧のオプション
 	Choose a layout:	レイアウトを選択:
 	Comments only	注釈のみ
@@ -1969,5 +1967,3 @@
 	Couldn't import the signature image: {e}	署名画像を読み込めませんでした: {e}
 	Go to page…	ページへ移動…
 	Based on PdfCraft by the ArtCraft team.	ArtCraft チームの PdfCraft をもとにしています。
-	PdfKub is open source	PdfKub はオープンソースです
-	Source code, releases and issue reports.	ソースコード、リリース、問題の報告。

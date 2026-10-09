@@ -1256,7 +1256,6 @@
 	Delete selected pages (Organize)	刪除所選頁面（整理頁面）
 	Select all pages (Organize)	選取所有頁面（整理頁面）
 	Version {v}	版本{v}
-	A clean-room, open-source PDF application written in Rust. MIT OR Apache-2.0.	用 Rust 從零編寫的開源 PDF 應用。MIT OR Apache-2.0 許可。
 	Summarize Options	彙總選項
 	Choose a layout:	選擇佈局：
 	Comments only	僅註解
@@ -1670,7 +1669,7 @@
 	Convert	轉換
 	E-Sign	電子簽署
 	Welcome to PdfKub	歡迎使用 PdfKub
-	An open-source PDF workbench — local, private, and scriptable.	開源 PDF 工作台，在本機處理、保護隱私，並支援指令碼。
+	A PDF workbench — local, private, and scriptable.	PDF 工作台，在本機處理、保護隱私，並支援指令碼。
 	Recommended tools	推薦工具
 	Use now	立即使用
 	Recent	最近使用
@@ -1702,7 +1701,6 @@
 	Split document…	分割文件…
 	Number pages…	編訂頁碼…
 	Keyboard shortcuts	鍵盤快速鍵
-	PdfKub on GitHub	GitHub 上的 PdfKub
 	Check for updates…	尋找更新…
 	About PdfKub	關於 PdfKub
 	JavaScript console…	JavaScript 主控台…
@@ -1962,5 +1960,3 @@
 	Couldn't import the signature image: {e}	無法匯入簽名圖像：{e}
 	Go to page…	轉到頁面…
 	Based on PdfCraft by the ArtCraft team.	以 ArtCraft 團隊的 PdfCraft 為基礎。
-	PdfKub is open source	PdfKub 是開放原始碼軟體
-	Source code, releases and issue reports.	原始碼、版本發布與問題回報。

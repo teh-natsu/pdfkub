@@ -1298,7 +1298,6 @@
 	Delete selected pages (Organize)	删除选定页面（组织页面）
 	Select all pages (Organize)	选择所有页面（组织页面）
 	Version {v}	版本{v}
-	A clean-room, open-source PDF application written in Rust. MIT OR Apache-2.0.	用 Rust 从零编写的开源 PDF 应用。MIT OR Apache-2.0 许可。
 	Summarize Options	汇总选项
 	Choose a layout:	选择布局：
 	Comments only	仅注释
@@ -1712,7 +1711,7 @@
 	Convert	转换
 	E-Sign	电子签名
 	Welcome to PdfKub	欢迎使用 PdfKub
-	An open-source PDF workbench — local, private, and scriptable.	开源 PDF 工作台——本地、私密、可编写脚本。
+	A PDF workbench — local, private, and scriptable.	PDF 工作台——本地、私密、可编写脚本。
 	Recommended tools	推荐工具
 	Use now	立即使用
 	Recent	最近
@@ -1744,7 +1743,6 @@
 	Split document…	拆分文档…
 	Number pages…	页面编号…
 	Keyboard shortcuts	键盘快捷键
-	PdfKub on GitHub	GitHub 上的 PdfKub
 	Check for updates…	检查更新…
 	About PdfKub	关于 PdfKub
 	JavaScript console…	JavaScript 控制台…
@@ -2038,5 +2036,3 @@
 	Couldn't import the signature image: {e}	无法导入签名图像：{e}
 	Go to page…	转到页面…
 	Based on PdfCraft by the ArtCraft team.	基于 ArtCraft 团队的 PdfCraft。
-	PdfKub is open source	PdfKub 是开源软件
-	Source code, releases and issue reports.	源代码、版本发布和问题反馈。

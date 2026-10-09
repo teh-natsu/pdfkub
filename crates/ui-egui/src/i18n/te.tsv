@@ -125,7 +125,7 @@ comment menu	Edit	సవరించు
 	Previous page	మునుపటి పేజీ
 	Current page — type a page number or label (such as iv) and press Enter	ప్రస్తుత పేజీ — పేజీ సంఖ్యను లేదా లేబుల్‌ను (iv వంటిది) టైప్ చేసి Enter నొక్కండి
 	Welcome to PdfKub	PdfKubకు స్వాగతం
-	An open-source PDF workbench — local, private, and scriptable.	ఓపెన్-సోర్స్ PDF వర్క్‌బెంచ్ — మీ కంప్యూటర్‌లోనే నడుస్తుంది, గోప్యంగా ఉంటుంది, స్క్రిప్ట్‌లతో ఆటోమేట్ చేయవచ్చు.
+	A PDF workbench — local, private, and scriptable.	PDF వర్క్‌బెంచ్ — మీ కంప్యూటర్‌లోనే నడుస్తుంది, గోప్యంగా ఉంటుంది, స్క్రిప్ట్‌లతో ఆటోమేట్ చేయవచ్చు.
 	Recommended tools	సిఫార్సు చేసిన సాధనాలు
 	Use now	ఇప్పుడే ఉపయోగించు
 	Open file	ఫైల్‌ను తెరువు
@@ -265,7 +265,6 @@ comment menu	Edit	సవరించు
 	Split document…	పత్రాన్ని విభజించు…
 	Number pages…	పేజీలకు సంఖ్యలు వేయి…
 	Keyboard shortcuts	కీబోర్డ్ షార్ట్‌కట్‌లు
-	PdfKub on GitHub	GitHubలో PdfKub
 	Check for updates…	అప్‌డేట్‌ల కోసం తనిఖీ చేయి…
 	About PdfKub	PdfKub గురించి
 	Export a PDF	PDFను ఎగుమతి చేయి
@@ -1318,7 +1317,6 @@ signature pad	Type	టైప్ చేయి
 	Recover	పునరుద్ధరించు
 	Discard	విస్మరించు
 	Version {v}	వెర్షన్ {v}
-	A clean-room, open-source PDF application written in Rust. MIT OR Apache-2.0.	Rustలో రాసిన క్లీన్-రూమ్, ఓపెన్-సోర్స్ PDF అప్లికేషన్. MIT OR Apache-2.0.
 	Summarize Options	సారాంశ ఎంపికలు
 	Choose a layout:	లేఅవుట్‌ను ఎంచుకోండి:
 	Comments only	వ్యాఖ్యలు మాత్రమే
