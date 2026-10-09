@@ -111,6 +111,13 @@ impl AddedText {
         }
     }
 
+    /// The first baseline's distance below the box top and the distance between baselines, in
+    /// ems: the standard fonts' 0.95 and 1.2, or the embedded face's own (Thai needs more room
+    /// for stacked vowels and tone marks).
+    fn spacing(&self, face: Option<&EmbedFace>) -> (f64, f64) {
+        face.map_or((0.95, 1.2), EmbedFace::line_metrics)
+    }
+
     /// The width of `s` in this item's font and size.
     fn width_of(&self, face: Option<&EmbedFace>, s: &str) -> f64 {
         match face {
@@ -262,7 +269,8 @@ fn is_mark(c: char) -> bool {
 /// The box a text item occupies (height from its lines).
 pub fn text_rect(t: &AddedText) -> [f64; 4] {
     let r = norm(t.rect);
-    let h = lines(t).len().max(1) as f64 * t.size * 1.2;
+    let (_, step) = t.spacing(t.face().as_ref());
+    let h = lines(t).len().max(1) as f64 * t.size * step;
     [r[0], r[3] - h, r[2], r[3]]
 }
 
@@ -294,6 +302,7 @@ fn draw(doc: &Document, c: &Content, view: [f64; 6], embedded: Option<&EmbeddedT
             let [cr, cg, cb] = t.color.map(|v| v.clamp(0.0, 1.0));
             out.extend(format!("BT /{name} {} Tf {} {} {} rg\n", n(t.size), n(cr), n(cg), n(cb)).bytes());
             let all = lines(t);
+            let (first, step) = t.spacing(Some(&face));
             for (i, line) in all.iter().enumerate() {
                 let shaped = face.shape(line);
                 let scale = t.size / shaped.units_per_em;
@@ -303,7 +312,7 @@ fn draw(doc: &Document, c: &Content, view: [f64; 6], embedded: Option<&EmbeddedT
                     Align::Center => r[0] + ((r[2] - r[0]) - w) / 2.0,
                     Align::Right => r[2] - w,
                 };
-                let y0 = r[3] - (i as f64 * 1.2 + 0.95) * t.size;
+                let y0 = r[3] - (i as f64 * step + first) * t.size;
                 let spaces = line.matches(' ').count();
                 let extra =
                     if t.align == Align::Justify && i + 1 < all.len() && spaces > 0 { ((r[2] - r[0]) - w).max(0.0) / spaces as f64 } else { 0.0 };

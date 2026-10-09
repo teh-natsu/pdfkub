@@ -126,6 +126,25 @@ impl EmbedFace {
         FontRef::new(&self.data).ok()
     }
 
+    /// Line layout in ems: the first baseline's distance below the top of the text, and the
+    /// distance between baselines. From the face's OS/2 Windows ascent (which clears stacked
+    /// marks such as a Thai vowel with a tone mark above it) and typographic descent; never
+    /// tighter than the standard fonts' 0.95 and 1.2.
+    pub fn line_metrics(&self) -> (f64, f64) {
+        let Some(font) = self.font() else { return (0.95, 1.2) };
+        let upem = f64::from(font.head().map(|h| h.units_per_em()).unwrap_or(1000).max(16));
+        let (ascent, descent) = match font.os2() {
+            Ok(os2) => (f64::from(os2.us_win_ascent()), f64::from(os2.s_typo_descender())),
+            Err(_) => {
+                let m = font.metrics(Size::unscaled(), skrifa::instance::LocationRef::default());
+                (f64::from(m.ascent), f64::from(m.descent))
+            }
+        };
+        let first = (ascent / upem).clamp(0.95, 2.0);
+        let step = ((ascent - descent) / upem).clamp(1.2, 3.0);
+        (first, step)
+    }
+
     /// Whether the face maps every character of `text` that is drawn (not whitespace).
     pub fn covers(&self, text: &str) -> bool {
         let Some(font) = self.font() else { return false };
@@ -436,6 +455,14 @@ mod tests {
             assert!(EmbedFace::from_bytes(&face.name, &face.data, 0).is_ok(), "{}", face.name);
             assert!(face.covers("หนังสือราชการ ที่ ๑๒๓"), "{}", face.name);
         }
+    }
+
+    #[test]
+    fn thai_faces_get_room_for_stacked_marks() {
+        let (first, step) = EmbedFace::sarabun(false, false).line_metrics();
+        assert!(first > 1.2 && step > 1.45, "{first} {step}");
+        let (first, step) = EmbedFace::anuphan(false).line_metrics();
+        assert!(first > 1.05 && step > 1.35, "{first} {step}");
     }
 
     #[test]
