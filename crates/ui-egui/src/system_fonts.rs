@@ -17,17 +17,55 @@ const MAX_FACES: u32 = 16;
 /// Arabic letter alef: the face must have it to be worth loading.
 const PROBE: char = '\u{0627}';
 
+/// Han in both Chinese forms and Japanese kana (简 體 語 ご): the CJK face must have them all, so
+/// the language list's 简体中文, 繁體中文 and 日本語 draw in a build without craft-fonts.
+const CJK_PROBES: [char; 4] = ['\u{7B80}', '\u{9AD4}', '\u{8A9E}', '\u{3054}'];
+
 /// The installed fallback face, read once. `None` when it is turned off or no candidate fits.
 pub fn fallback() -> Option<Arc<FontData>> {
     static CACHE: OnceLock<Option<Arc<FontData>>> = OnceLock::new();
     CACHE.get_or_init(load).clone()
 }
 
+/// The installed CJK fallback face (PdfKub), read once, after [`fallback`] in every family.
+/// `None` when system fonts are turned off or no candidate has every [`CJK_PROBES`] character.
+pub fn cjk_fallback() -> Option<Arc<FontData>> {
+    static CACHE: OnceLock<Option<Arc<FontData>>> = OnceLock::new();
+    CACHE.get_or_init(|| if turned_off() { None } else { cjk_candidates().iter().find_map(|path| read_with(path, &CJK_PROBES)) }).clone()
+}
+
+fn turned_off() -> bool {
+    std::env::var_os("PDFKUB_SYSTEM_FONTS").is_some_and(|v| v == "0")
+}
+
 fn load() -> Option<Arc<FontData>> {
-    if std::env::var_os("PDFKUB_SYSTEM_FONTS").is_some_and(|v| v == "0") {
+    if turned_off() {
         return None;
     }
     candidates().iter().find_map(|path| read(path))
+}
+
+/// Well-known CJK faces that cover Simplified and Traditional Chinese and Japanese kana, best
+/// first.
+fn cjk_candidates() -> Vec<PathBuf> {
+    if cfg!(windows) {
+        let dir = std::env::var_os("WINDIR").or_else(|| std::env::var_os("SystemRoot")).map_or_else(|| PathBuf::from(r"C:\Windows"), PathBuf::from);
+        ["msyh.ttc", "msjh.ttc", "simsun.ttc", "YuGothR.ttc", "meiryo.ttc"].iter().map(|f| dir.join("Fonts").join(f)).collect()
+    } else if cfg!(target_os = "macos") {
+        ["/System/Library/Fonts/PingFang.ttc", "/System/Library/Fonts/Hiragino Sans GB.ttc", "/System/Library/Fonts/STHeiti Light.ttc"]
+            .iter()
+            .map(PathBuf::from)
+            .collect()
+    } else {
+        let files = [
+            "opentype/noto/NotoSansCJK-Regular.ttc",
+            "noto-cjk/NotoSansCJK-Regular.ttc",
+            "google-noto-cjk/NotoSansCJK-Regular.ttc",
+            "truetype/wqy/wqy-microhei.ttc",
+            "wenquanyi/wqy-microhei/wqy-microhei.ttc",
+        ];
+        ["/usr/share/fonts", "/usr/local/share/fonts"].iter().flat_map(|dir| files.iter().map(move |f| Path::new(dir).join(f))).collect()
+    }
 }
 
 /// Well-known locations of faces with broad script coverage, best first.
@@ -55,12 +93,17 @@ fn candidates() -> Vec<PathBuf> {
 }
 
 fn read(path: &Path) -> Option<Arc<FontData>> {
+    read_with(path, &[PROBE])
+}
+
+/// The first face of the font file at `path` that maps every character of `probes`.
+fn read_with(path: &Path, probes: &[char]) -> Option<Arc<FontData>> {
     let meta = std::fs::metadata(path).ok()?;
     if !meta.is_file() || meta.len() > MAX_BYTES {
         return None;
     }
     let bytes = std::fs::read(path).ok()?;
-    let index = face_with(&bytes, PROBE)?;
+    let index = face_with_all(&bytes, probes)?;
     let mut data = FontData::from_owned(bytes);
     data.index = index;
     log::info!("interface font fallback: {}", path.display());
@@ -69,9 +112,20 @@ fn read(path: &Path) -> Option<Arc<FontData>> {
 
 /// The first face of the file that parses and maps `c`. egui parses fonts with the same skrifa,
 /// so a face accepted here is one it can load.
+#[cfg(test)]
 fn face_with(bytes: &[u8], c: char) -> Option<u32> {
+    face_with_all(bytes, &[c])
+}
+
+/// [`face_with`] for every character of `probes`.
+fn face_with_all(bytes: &[u8], probes: &[char]) -> Option<u32> {
     use skrifa::MetadataProvider as _;
-    (0..MAX_FACES).find(|&index| skrifa::FontRef::from_index(bytes, index).is_ok_and(|font| font.charmap().map(c).is_some()))
+    (0..MAX_FACES).find(|&index| {
+        skrifa::FontRef::from_index(bytes, index).is_ok_and(|font| {
+            let map = font.charmap();
+            probes.iter().all(|&c| map.map(c).is_some())
+        })
+    })
 }
 
 #[cfg(test)]
@@ -101,5 +155,19 @@ mod tests {
         let list = candidates();
         assert!(!list.is_empty());
         assert!(list.iter().all(|p| p.extension().is_some_and(|e| e == "ttf" || e == "ttc")));
+        let cjk = cjk_candidates();
+        assert!(!cjk.is_empty() && cjk.iter().all(|p| p.is_absolute() || cfg!(windows)));
+    }
+
+    #[test]
+    fn the_cjk_face_has_every_probe_or_is_none() {
+        // Anuphan has Thai and Latin only.
+        let anuphan = include_bytes!("../../../assets/fonts/Anuphan-Regular.ttf");
+        assert_eq!(face_with_all(anuphan, &CJK_PROBES), None);
+        assert_eq!(face_with_all(anuphan, &['A', '\u{0E01}']), Some(0));
+        // On a machine with one of the candidates (Windows has Microsoft YaHei), it draws them.
+        if let Some(data) = cjk_fallback() {
+            assert_eq!(face_with_all(&data.font, &CJK_PROBES), Some(data.index));
+        }
     }
 }

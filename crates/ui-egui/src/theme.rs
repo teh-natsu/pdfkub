@@ -140,6 +140,8 @@ pub fn install_fonts_for(ctx: &egui::Context, prefer_hans: bool) {
 
 /// The name of the installed face [`installed_font_definitions`] may add after the embedded ones.
 pub const SYSTEM_FALLBACK: &str = "system-fallback";
+/// The installed CJK face added after [`SYSTEM_FALLBACK`] (PdfKub: builds without craft-fonts).
+pub const SYSTEM_FALLBACK_CJK: &str = "system-fallback-cjk";
 
 /// What [`install_fonts_for`] installs: [`font_definitions_for`], then, on desktop, one face
 /// already installed on this machine as the last fallback of every family. It only draws
@@ -153,6 +155,14 @@ pub fn installed_font_definitions(prefer_hans: bool) -> FontDefinitions {
         fonts.font_data.insert(SYSTEM_FALLBACK.to_owned(), data);
         for stack in fonts.families.values_mut() {
             stack.push(SYSTEM_FALLBACK.to_owned());
+        }
+    }
+    // Chinese and Japanese (language names, file names) when no embedded face has them.
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(data) = crate::system_fonts::cjk_fallback() {
+        fonts.font_data.insert(SYSTEM_FALLBACK_CJK.to_owned(), data);
+        for stack in fonts.families.values_mut() {
+            stack.push(SYSTEM_FALLBACK_CJK.to_owned());
         }
     }
     fonts
@@ -303,6 +313,23 @@ pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The language list's Chinese and Japanese names draw (no empty boxes) in a build without
+    /// craft-fonts, from the installed CJK face (skipped where the machine has none).
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn chinese_and_japanese_language_names_have_glyphs() {
+        if crate::system_fonts::cjk_fallback().is_none() {
+            eprintln!("skipped: no CJK face installed");
+            return;
+        }
+        let ctx = egui::Context::default();
+        ctx.set_fonts(installed_font_definitions(false));
+        ctx.run_ui(Default::default(), |_| {}).textures_delta.clear();
+        for name in ["简体中文", "繁體中文", "日本語"] {
+            assert!(ctx.fonts_mut(|f| f.has_glyphs(&regular(13.0), name)), "{name}");
+        }
+    }
 
     /// WCAG 2 contrast ratio between two opaque colours.
     fn contrast(a: Color32, b: Color32) -> f32 {
