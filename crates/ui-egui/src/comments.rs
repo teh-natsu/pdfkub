@@ -1280,6 +1280,14 @@ pub(crate) fn context_menu(ui: &mut egui::Ui, view: &mut DocView, info: &DocInfo
             }
         }
         None => {
+            // Text selected on the page: Copy, as ⌘C does.
+            if let Some(text) = view.selected_text() {
+                if ui.button(tl!("Copy")).clicked() {
+                    ui.ctx().copy_text(text);
+                    ui.close();
+                }
+                ui.separator();
+            }
             if let Some((page, at)) = view.comments.context_at
                 && ui.add_enabled(allowed, egui::Button::new(tl!("Add a sticky note here"))).clicked()
             {
