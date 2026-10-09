@@ -2101,15 +2101,15 @@ usage = "Embedded in PDFs for added Thai text (the default Thai face)"
 sha256 = "5ef1b930f9a3afed5ec83374b5617cad3a89d91a8fc5e372dc028c2aa2950f8d"
 
 [[asset]]
-path = "assets/fonts/Charmonman-Regular.ttf"
-title = "Charmonman Regular"
-author = "The Charmonman Project Authors (Cadson Demak)"
-source = "https://github.com/google/fonts/tree/main/ofl/charmonman"
+path = "assets/fonts/Sriracha-Regular.ttf"
+title = "Sriracha Regular"
+author = "Cadson Demak, Pablo Impallari"
+source = "https://github.com/google/fonts/tree/main/ofl/sriracha"
 licence = "OFL-1.1"
-licence_file = "assets/fonts/OFL-Charmonman.txt"
+licence_file = "assets/fonts/OFL-Sriracha.txt"
 kind = "font"
 usage = "Typed signatures with Thai letters, drawn as outlines"
-sha256 = "7ec5575c6c87a6be69de7839b3ecd1027b7ba6510ad3e49bc30b73cc9ee1bce0"
+sha256 = "c3128c30cb21e8724b792586c87059d1b5eceae10d9957ba2ab26c80bbed3669"
 
 [[asset]]
 path = "assets/fonts/Inter-Regular.ttf"

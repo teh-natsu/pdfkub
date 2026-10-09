@@ -5,9 +5,9 @@ use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, MetadataProvider};
 
 static FONT: &[u8] = include_bytes!("../../../assets/fonts/DancingScript.ttf");
-/// Charmonman (OFL-1.1, Cadson Demak), a Thai handwriting face with a matching Latin script:
-/// typed signatures with letters Dancing Script lacks (Thai names) use it.
-static THAI_FONT: &[u8] = include_bytes!("../../../assets/fonts/Charmonman-Regular.ttf");
+/// Sriracha (OFL-1.1, Cadson Demak), Thai and Latin handwriting in a round pen: typed
+/// signatures with letters Dancing Script lacks (Thai names) use it.
+static THAI_FONT: &[u8] = include_bytes!("../../../assets/fonts/Sriracha-Regular.ttf");
 
 /// Bound signature work while allowing long personal names.
 pub const MAX_SIGNATURE_CHARS: usize = 256;
@@ -243,8 +243,8 @@ fn shaped_outline(font: &FontRef<'_>, text: &str) -> ScriptOutline {
         return ScriptOutline::default();
     }
     // The ink's own height, not the face's generous ascent and descent: a signature box is sized
-    // to its bounds, and Charmonman's line metrics would leave a Thai name half the size of a
-    // Latin one.
+    // to its bounds, and a Thai face's line metrics (room for stacked marks) would leave a Thai
+    // name much smaller than a Latin one.
     let (low, high) = pen.contours.iter().flatten().fold((0.0_f64, 0.0_f64), |(lo, hi), p| (lo.min(p[1]), hi.max(p[1])));
     let _ = metrics;
     ScriptOutline { contours: pen.contours, width: x, ascent: high, descent: low }
@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn thai_names_use_the_thai_handwriting_face() {
         let thai = super::script_outline("สมชาย ใจดี");
-        assert!(thai.contours.len() > 10 && thai.width > 2.0, "{} contours, width {}", thai.contours.len(), thai.width);
+        assert!(thai.contours.len() >= 8 && thai.width > 2.0, "{} contours, width {}", thai.contours.len(), thai.width);
         // Marks above stay over their consonants: the line is no wider than without them.
         let plain = super::script_outline("กป");
         let marked = super::script_outline("กี่ปั่");
