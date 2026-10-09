@@ -40,6 +40,10 @@
          INSTALLDESKTOPSHORTCUT=0 on the msiexec command line for unattended installs. Secure, so the
          choice made in the (unelevated) UI reaches the elevated install. -->
     <Property Id="INSTALLDESKTOPSHORTCUT" Value="1" Secure="yes" />
+    <!-- Command-line tools (pdfkub-cli: scripting and the MCP server): off by default, since the
+         app doesn't need them and they are a second copy of the engine. A checkbox in the welcome
+         dialog, or INSTALLCLI=1 on the msiexec command line; they also go on the system PATH. -->
+    <Property Id="INSTALLCLI" Secure="yes" />
     <UIRef Id="PdfkubInstallerUI" />
 
     <StandardDirectory Id="ProgramFiles6432Folder">
@@ -53,12 +57,7 @@
 <?ifdef ModelsDir?>
       <ComponentGroupRef Id="PdfkubModels" />
 <?endif?>
-      <!-- pdfkub-cli (scripting and the MCP server) is not installed by default: the app doesn't
-           need it and it is a second copy of the engine. Add it with
-           msiexec /i pdfkub-….msi ADDLOCAL=Main,Cli -->
-      <Feature Id="Cli" Title="Command-line tools" Level="1000">
-        <ComponentRef Id="PdfkubCli" />
-      </Feature>
+      <ComponentRef Id="PdfkubCli" />
     </Feature>
   </Package>
 
@@ -158,8 +157,9 @@
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Shortcuts" Name="Desktop" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </ComponentGroup>
-    <Component Id="PdfkubCli" Directory="INSTALLFOLDER">
+    <Component Id="PdfkubCli" Directory="INSTALLFOLDER" Guid="5B0F7E2C-4C1D-4F6A-9E3B-2D8A7C6E1F40" Condition="INSTALLCLI = 1">
       <File Id="PdfkubCliExe" Source="$(var.BinDir)\pdfkub-cli.exe" KeyPath="yes" />
+      <Environment Id="CliOnPath" Name="PATH" Value="[INSTALLFOLDER]" Part="last" Action="set" System="yes" Permanent="no" />
     </Component>
   </Fragment>
 </Wix>

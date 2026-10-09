@@ -98,6 +98,21 @@ Assert-Equal $checkbox[1] 'INSTALLDESKTOPSHORTCUT' 'Welcome checkbox property'
 if ($checkbox[2] -notmatch 'desktop shortcut') { throw "Welcome checkbox label: '$($checkbox[2])'" }
 $checked = Read-Row 'SELECT `Value` FROM `CheckBox` WHERE `Property` = ''INSTALLDESKTOPSHORTCUT''' 1
 Assert-Equal $checked[0] '1' 'Welcome checkbox value'
+# Command-line tools: off by default (INSTALLCLI has no value), a welcome checkbox, secure, and
+# they put the install folder on the system PATH.
+Assert-NoRow 'SELECT `Value` FROM `Property` WHERE `Property` = ''INSTALLCLI''' 'INSTALLCLI default'
+if (($secure[0] -split ';') -notcontains 'INSTALLCLI') { throw "INSTALLCLI is not secure: '$($secure[0])'" }
+$cli = Read-Row 'SELECT `Directory_`, `Condition`, `KeyPath` FROM `Component` WHERE `Component` = ''PdfkubCli''' 3
+Assert-Equal $cli[0] 'INSTALLFOLDER' 'pdfkub-cli directory'
+Assert-Equal $cli[1] 'INSTALLCLI = 1' 'pdfkub-cli condition'
+Assert-Equal $cli[2] 'PdfkubCliExe' 'pdfkub-cli key path'
+$cliPath = Read-Row 'SELECT `Name`, `Value`, `Component_` FROM `Environment` WHERE `Environment` = ''CliOnPath''' 3
+Assert-Equal $cliPath[0] '=-*PATH' 'pdfkub-cli PATH entry'
+Assert-Equal $cliPath[1] '[~];[INSTALLFOLDER]' 'pdfkub-cli PATH value'
+Assert-Equal $cliPath[2] 'PdfkubCli' 'pdfkub-cli PATH component'
+$cliBox = Read-Row 'SELECT `Type`, `Property` FROM `Control` WHERE `Dialog_` = ''InstallWelcome'' AND `Control` = ''CommandLineTools''' 2
+Assert-Equal $cliBox[0] 'CheckBox' 'Welcome command-line control'
+Assert-Equal $cliBox[1] 'INSTALLCLI' 'Welcome command-line property'
 $app = Read-Row 'SELECT `KeyPath` FROM `Component` WHERE `Component` = ''PdfkubApp''' 1
 Assert-Equal $app[0] 'PdfkubExe' 'Shortcut executable key path'
 $scope = Read-Row 'SELECT `Value` FROM `Property` WHERE `Property` = ''ALLUSERS''' 1
@@ -135,4 +150,4 @@ $rm = Read-Row 'SELECT `Dialog` FROM `Dialog` WHERE `Dialog` = ''MsiRMFilesInUse
 Assert-Equal $rm[0] 'MsiRMFilesInUse' 'Files-in-use dialog'
 [void] [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Database)
 [void] [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Installer)
-Write-Output 'ok MSI: per-machine scope guard, publisher, persistent progress text, Start Menu shortcut, optional desktop shortcut (default on, checkbox), icon/key path, full-UI success/cancel/error and Finish controls, files-in-use dialog'
+Write-Output 'ok MSI: per-machine scope guard, publisher, persistent progress text, Start Menu shortcut, optional desktop shortcut (default on, checkbox), optional command-line tools on PATH (default off, checkbox), icon/key path, full-UI success/cancel/error and Finish controls, files-in-use dialog'
