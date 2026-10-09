@@ -1,6 +1,6 @@
 # PdfKub app icon
 
-<img src="pdfkub.svg" alt="PdfKub app icon: a red panda peeking over a PDF page and holding it with both paws, on night blue" width="128">
+<img src="pdfkub.svg" alt="PdfKub app icon: a red panda peeking over a PDF page and holding it with both paws, on bright blue" width="128">
 
 **Creature:** a red panda (แพนด้าแดง), head and paws, peeking over the top edge of a PDF page and holding
 it. Cream brows, cheeks and muzzle, dark tear marks under the eyes, cream-rimmed ears.
@@ -9,7 +9,7 @@ it. Cream brows, cheeks and muzzle, dark tear marks under the eyes, cream-rimmed
 
 | Colour | Hex | Used for |
 |---|---|---|
-| Night blue (app colour) | `#27477a` → `#121f3d` | the full-bleed field, top to bottom |
+| Bright blue (app colour) | `#2f6fe0` → `#163a8c` | the full-bleed field, top to bottom |
 | Fur | `#e8692d` → `#bb4015` | head and ears, top to bottom |
 | Dark fur | `#6b2410`, `#3a1a10` | tear marks and inner ears; paws |
 | Cream | `#fff6ea` | brows, cheeks, muzzle, ear rims |

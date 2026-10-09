@@ -22,8 +22,11 @@ command -v resvg >/dev/null || { echo "error: resvg not found (brew install resv
 # The masters are full-bleed 512 tiles (rx=112): right for Windows and Linux. macOS icons follow
 # Apple's grid instead: an 824 px body centred on a transparent 1024 canvas.
 mac() {
+  # Git Bash on Windows: resvg is a Windows program and can't open /d/... paths.
+  local href="$1"
+  if command -v cygpath >/dev/null; then href="$(cygpath -m "$1")"; fi
   echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024">'
-  echo '<image x="100" y="100" width="824" height="824" xlink:href="'"$1"'"/>'
+  echo '<image x="100" y="100" width="824" height="824" xlink:href="'"$href"'"/>'
   echo '</svg>'
 }
 MAC="$TMP/macos.svg"

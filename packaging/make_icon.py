@@ -1,6 +1,6 @@
 """Build the PdfKub app icon SVGs: the master (pdfkub.svg) and the small-size variant (pdfkub-small.svg).
 
-A red panda peeks over the top of a PDF page and holds it with both paws, on a night-blue tile.
+A red panda peeks over the top of a PDF page and holds it with both paws, on a bright-blue tile.
 Everything is plain SVG shapes, so no font or external artwork is needed.
 
   python3 packaging/make_icon.py assets/app-icon
@@ -9,7 +9,7 @@ import sys
 
 OUT_DIR = sys.argv[1]
 
-NIGHT_TOP, NIGHT_BOTTOM = "#27477a", "#121f3d"
+NIGHT_TOP, NIGHT_BOTTOM = "#2f6fe0", "#163a8c"
 FUR_TOP, FUR_BOTTOM = "#e8692d", "#bb4015"
 FUR_DARK = "#6b2410"  # tear marks, inner ears
 PAW = "#3a1a10"
