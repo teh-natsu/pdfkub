@@ -1987,3 +1987,6 @@
 	Created a PDF from {n} files; left out: {names}	PDF создан из файлов: {n}; пропущены: {names}
 	Created a PDF from the first {n} files	PDF создан из первых файлов: {n}
 	Go to page…	Перейти на страницу…
+	Based on PdfCraft by the ArtCraft team.	Основано на PdfCraft от команды ArtCraft.
+	PdfKub is open source	PdfKub — проект с открытым исходным кодом
+	Source code, releases and issue reports.	Исходный код, выпуски и сообщения о проблемах.

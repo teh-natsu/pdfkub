@@ -10,7 +10,7 @@
 //! Levels: `info` for PdfKub's own crates, `warn` for everything else (wgpu and naga are
 //! chatty). `RUST_LOG` replaces that with env_logger-style directives: `debug`,
 //! `warn,pdfcraft_render=trace`, `wgpu_core=info`. A directive ending in `*` matches every target
-//! that starts with it (`pdfkub*=debug`).
+//! that starts with it (`pdfcraft*=debug`).
 //!
 //! Records logged before the settings directory is known are kept (up to [`MAX_PENDING`]) and
 //! written once the file is attached. Writing never panics: a file that can't be created or
@@ -34,7 +34,7 @@ pub const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
 /// Records kept in memory until the log file is attached.
 pub const MAX_PENDING: usize = 512;
 /// The built-in filter when `RUST_LOG` is unset or empty.
-pub const DEFAULT_FILTER: &str = "warn,pdfkub*=info";
+pub const DEFAULT_FILTER: &str = "warn,pdfkub*=info,pdfcraft*=info";
 
 /// Per-target level filter parsed from env_logger-style directives.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -302,8 +302,8 @@ mod tests {
         assert_eq!(Filter::parse("naga").level_for("naga::front"), LevelFilter::Trace);
         assert_eq!(Filter::parse("naga").level_for("eframe"), LevelFilter::Error);
         // A trailing `*` is a plain prefix match.
-        assert_eq!(Filter::parse("pdfkub*=debug").level_for("pdfcraft_ui_egui::canvas"), LevelFilter::Debug);
-        assert_eq!(Filter::parse("pdfkub*=debug").level_for("eframe"), LevelFilter::Error);
+        assert_eq!(Filter::parse("pdfcraft*=debug").level_for("pdfcraft_ui_egui::canvas"), LevelFilter::Debug);
+        assert_eq!(Filter::parse("pdfcraft*=debug").level_for("eframe"), LevelFilter::Error);
     }
 
     #[test]

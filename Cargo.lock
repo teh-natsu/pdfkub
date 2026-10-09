@@ -3446,21 +3446,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdfkub"
-version = "0.4.0"
-dependencies = [
- "eframe",
- "egui",
- "fmv-macos-events",
- "log",
- "pdfcraft-ui-egui",
- "rustls-native-certs",
- "serde_json",
- "ureq",
- "winresource",
-]
-
-[[package]]
 name = "pdfcraft-a11y"
 version = "0.4.0"
 dependencies = [
@@ -3492,18 +3477,6 @@ dependencies = [
  "pdfcraft-render",
  "pdfcraft-xfa",
  "png 0.18.1",
- "serde_json",
-]
-
-[[package]]
-name = "pdfkub-cli"
-version = "0.4.0"
-dependencies = [
- "base64 0.22.1",
- "pdfcraft-automation",
- "pdfcraft-cos",
- "pdfcraft-engine",
- "pdfcraft-render",
  "serde_json",
 ]
 
@@ -3819,18 +3792,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdfkub-web"
-version = "0.4.0"
-dependencies = [
- "eframe",
- "egui",
- "js-sys",
- "pdfcraft-ui-egui",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
 name = "pdfcraft-xfa"
 version = "0.4.0"
 dependencies = [
@@ -3851,6 +3812,45 @@ dependencies = [
  "pdfcraft-model",
  "roxmltree",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "pdfkub"
+version = "0.4.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "fmv-macos-events",
+ "log",
+ "pdfcraft-ui-egui",
+ "rustls-native-certs",
+ "serde_json",
+ "ureq",
+ "winresource",
+]
+
+[[package]]
+name = "pdfkub-cli"
+version = "0.4.0"
+dependencies = [
+ "base64 0.22.1",
+ "pdfcraft-automation",
+ "pdfcraft-cos",
+ "pdfcraft-engine",
+ "pdfcraft-render",
+ "serde_json",
+]
+
+[[package]]
+name = "pdfkub-web"
+version = "0.4.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "js-sys",
+ "pdfcraft-ui-egui",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

@@ -1961,3 +1961,6 @@
 	Choose a PNG or JPEG image (up to 4 MiB). Transparency is preserved.	選擇 PNG 或 JPEG 圖像（最大 4 MiB）。透明度會保留。
 	Couldn't import the signature image: {e}	無法匯入簽名圖像：{e}
 	Go to page…	轉到頁面…
+	Based on PdfCraft by the ArtCraft team.	以 ArtCraft 團隊的 PdfCraft 為基礎。
+	PdfKub is open source	PdfKub 是開放原始碼軟體
+	Source code, releases and issue reports.	原始碼、版本發布與問題回報。

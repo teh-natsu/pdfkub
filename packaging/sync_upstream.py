@@ -5,6 +5,7 @@
 1. Renames PdfCraft to PdfKub in file contents and paths (library crates keep their pdfcraft-*
    names), leaving the credits to upstream alone: "based on PdfCraft", "PdfCraft contributors",
    the UPSTREAM link and the like.
+   Then runs `cargo fmt --all`, since the shorter name changes line lengths.
 2. Refreshes the sha256 values in ATTRIBUTION.toml, drops entries for files that are gone, and
    regenerates ATTRIBUTION.md (the same output as `cargo xtask assets --write`).
 3. Lists ArtCraft branding that came in with the merge (Discord, getartcraft.com, logos, the
@@ -23,16 +24,30 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SKIP_DIRS = {".git", "vendor", "target", "contributors"}
 # Upstream's copyright and our own hand-written notices are never rewritten.
 SKIP_FILES = {"LICENSE-MIT", "LICENSE-APACHE", "NOTICE", "README.md", "sync_upstream.py"}
-LIB_CRATES = sorted(os.listdir(os.path.join(ROOT, "crates")), key=len, reverse=True)
+def library_crates():
+    """Crate folders, plus the planned crates named in xtask's layer table (pdfcraft-arlington…)."""
+    names = set(os.listdir(os.path.join(ROOT, "crates")))
+    layers = os.path.join(ROOT, "xtask", "src", "layers.rs")
+    if os.path.isfile(layers):
+        names |= set(re.findall(r'\("([a-z0-9-]+)", Class::(?!Exempt)', open(layers, encoding="utf-8").read()))
+    return sorted(names, key=len, reverse=True)
+
+
+LIB_CRATES = library_crates()
 LOWER = re.compile(r"pdfcraft(?![-_](?:" + "|".join(c.replace("-", "[-_]") for c in LIB_CRATES) + "))")
 
-# Credits to upstream that must keep the PdfCraft name.
+# Credits to upstream that must keep the PdfCraft name, and the pdfcraft prefix shared by the
+# library crates (log filters such as `pdfcraft*=info`, `strip_prefix("pdfcraft-")`).
 PROTECTED = [
     "github.com/storytold/pdfcraft",
     "Based on PdfCraft",
     "based on PdfCraft",
     "PdfCraft contributors",
     "PdfCraft by the ArtCraft team",
+    "pdfcraft*",
+    "`pdfcraft-`",
+    '"pdfcraft-"',
+    '"pdfcraft_"',
 ]
 REPLACEMENTS = [
     ("ai.storyteller.pdfcraft", "io.github.teh_natsu.pdfkub"),
@@ -46,7 +61,13 @@ BRANDING_ALLOWED_FILES = {"NOTICE", "README.md", "ROADMAP.md", "LICENSE-MIT", "p
 
 
 def rename_text(text, protect=True):
+    if protect:
+        # A line that names ArtCraft is a credit to upstream ("based on PdfCraft by the ArtCraft
+        # team", in any language): leave it as it is.
+        return "".join(line if "ArtCraft" in line else rename_text(line, protect=None) for line in text.splitlines(keepends=True))
     masks = {}
+    if protect is None:
+        protect = True
     if protect:
         for i, phrase in enumerate(PROTECTED):
             token = f"\0KEEP{i}\0"
@@ -182,6 +203,11 @@ def branding_left():
 
 
 edited, moves = rebrand()
+# The new names change line lengths: let rustfmt rewrap (skipped when Rust isn't installed).
+try:
+    subprocess.run(["cargo", "fmt", "--all"], cwd=ROOT, check=True)
+except (OSError, subprocess.CalledProcessError) as e:
+    print(f"cargo fmt skipped: {e}")
 dropped, rehashed = refresh_attribution()
 print(f"renamed text in {len(edited)} files, moved {len(moves)} paths")
 for f in edited:
