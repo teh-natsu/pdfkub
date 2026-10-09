@@ -13,8 +13,6 @@ Third-party material
 This product bundles third-party material under its own licenses, listed below. The per-file
 list (author, source, license) is in ATTRIBUTION.md.
 
-- PdfKub app icon (assets/app-icon/): the word "ครับ" is Kanit Bold, Copyright 2020 The Kanit Project
-  Authors, converted to outlines — SIL Open Font License 1.1. See assets/app-icon/OFL-Kanit.txt.
 - Lucide icons (assets/icons/*.svg) — ISC License. See assets/icons/LICENSE-lucide.txt.
 - Inter typeface (assets/fonts/Inter-*.ttf) — SIL Open Font License 1.1. See assets/fonts/OFL-Inter.txt.
 - JetBrains Mono typeface (assets/fonts/JetBrainsMono-*.ttf) — SIL Open Font License 1.1. See assets/fonts/OFL-JetBrainsMono.txt.

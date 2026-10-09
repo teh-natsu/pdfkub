@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/app-icon/pdfkub.svg" alt="ไอคอน PdfKub: หน้ากระดาษกับกล่องคำพูดสีส้มเขียนว่า ครับ" width="128">
+  <img src="assets/app-icon/pdfkub.svg" alt="ไอคอน PdfKub: แพนด้าแดงโผล่หน้ามาจับเอกสาร PDF" width="128">
 </p>
 
 <h1 align="center">PdfKub</h1>
