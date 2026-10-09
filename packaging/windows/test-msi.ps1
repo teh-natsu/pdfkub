@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Check the compiled MSI's install scope, publisher, shortcuts and native UI, without installing it.
 .EXAMPLE
