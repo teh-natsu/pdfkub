@@ -142,6 +142,8 @@ pub fn install_fonts_for(ctx: &egui::Context, prefer_hans: bool) {
 pub const SYSTEM_FALLBACK: &str = "system-fallback";
 /// The installed CJK face added before [`SYSTEM_FALLBACK`] (PdfKub: builds without craft-fonts).
 pub const SYSTEM_FALLBACK_CJK: &str = "system-fallback-cjk";
+/// The installed Telugu face, beside [`SYSTEM_FALLBACK_CJK`].
+pub const SYSTEM_FALLBACK_TELUGU: &str = "system-fallback-telugu";
 
 /// What [`install_fonts_for`] installs: [`font_definitions_for`], then, on desktop, one face
 /// already installed on this machine as the last fallback of every family. It only draws
@@ -153,10 +155,12 @@ pub fn installed_font_definitions(prefer_hans: bool) -> FontDefinitions {
     // Chinese and Japanese (language names, file names) when no embedded face has them; before
     // the Arabic fallback, which stays last (the two share no letters).
     #[cfg(not(target_arch = "wasm32"))]
-    if let Some(data) = crate::system_fonts::cjk_fallback() {
-        fonts.font_data.insert(SYSTEM_FALLBACK_CJK.to_owned(), data);
+    for (name, data) in [(SYSTEM_FALLBACK_CJK, crate::system_fonts::cjk_fallback()), (SYSTEM_FALLBACK_TELUGU, crate::system_fonts::telugu_fallback())]
+    {
+        let Some(data) = data else { continue };
+        fonts.font_data.insert(name.to_owned(), data);
         for stack in fonts.families.values_mut() {
-            stack.push(SYSTEM_FALLBACK_CJK.to_owned());
+            stack.push(name.to_owned());
         }
     }
     #[cfg(not(target_arch = "wasm32"))]
@@ -329,6 +333,9 @@ mod tests {
         ctx.run_ui(Default::default(), |_| {}).textures_delta.clear();
         for name in ["简体中文", "繁體中文", "日本語"] {
             assert!(ctx.fonts_mut(|f| f.has_glyphs(&regular(13.0), name)), "{name}");
+        }
+        if crate::system_fonts::telugu_fallback().is_some() {
+            assert!(ctx.fonts_mut(|f| f.has_glyphs(&regular(13.0), "తెలుగు")), "Telugu");
         }
     }
 

@@ -27,6 +27,35 @@ pub fn fallback() -> Option<Arc<FontData>> {
     CACHE.get_or_init(load).clone()
 }
 
+/// Telugu letters (త ె ల గ): the language list's తెలుగు.
+const TELUGU_PROBES: [char; 4] = ['\u{0C24}', '\u{0C46}', '\u{0C32}', '\u{0C17}'];
+
+/// The installed Telugu fallback face (PdfKub), read once, like [`cjk_fallback`].
+pub fn telugu_fallback() -> Option<Arc<FontData>> {
+    static CACHE: OnceLock<Option<Arc<FontData>>> = OnceLock::new();
+    CACHE.get_or_init(|| if turned_off() { None } else { telugu_candidates().iter().find_map(|path| read_with(path, &TELUGU_PROBES)) }).clone()
+}
+
+/// Well-known faces with Telugu, best first.
+fn telugu_candidates() -> Vec<PathBuf> {
+    if cfg!(windows) {
+        let dir = std::env::var_os("WINDIR").or_else(|| std::env::var_os("SystemRoot")).map_or_else(|| PathBuf::from(r"C:\Windows"), PathBuf::from);
+        ["Nirmala.ttc", "Nirmala.ttf", "gautami.ttf"].iter().map(|f| dir.join("Fonts").join(f)).collect()
+    } else if cfg!(target_os = "macos") {
+        [
+            "/System/Library/Fonts/KohinoorTelugu.ttc",
+            "/System/Library/Fonts/Supplemental/Telugu MN.ttc",
+            "/System/Library/Fonts/Supplemental/Telugu Sangam MN.ttc",
+        ]
+        .iter()
+        .map(PathBuf::from)
+        .collect()
+    } else {
+        let files = ["truetype/noto/NotoSansTelugu-Regular.ttf", "noto/NotoSansTelugu-Regular.ttf", "google-noto/NotoSansTelugu-Regular.ttf"];
+        ["/usr/share/fonts", "/usr/local/share/fonts"].iter().flat_map(|dir| files.iter().map(move |f| Path::new(dir).join(f))).collect()
+    }
+}
+
 /// The installed CJK fallback face (PdfKub), read once, after [`fallback`] in every family.
 /// `None` when system fonts are turned off or no candidate has every [`CJK_PROBES`] character.
 pub fn cjk_fallback() -> Option<Arc<FontData>> {
@@ -155,8 +184,9 @@ mod tests {
         let list = candidates();
         assert!(!list.is_empty());
         assert!(list.iter().all(|p| p.extension().is_some_and(|e| e == "ttf" || e == "ttc")));
-        let cjk = cjk_candidates();
-        assert!(!cjk.is_empty() && cjk.iter().all(|p| p.is_absolute() || cfg!(windows)));
+        for list in [cjk_candidates(), telugu_candidates()] {
+            assert!(!list.is_empty() && list.iter().all(|p| p.is_absolute() || cfg!(windows)));
+        }
     }
 
     #[test]

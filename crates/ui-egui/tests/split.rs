@@ -152,3 +152,32 @@ fn closing_one_side_of_a_document_open_on_both_keeps_it_open_without_asking() {
     assert!(app.session.get(id).is_some_and(|d| d.dirty), "the edit is still there");
     assert!(!app.is_split());
 }
+
+/// A pointer click on a tab in a side's row shows it there, and the tabs sit above the pages
+/// (a tab reaching into the page area lost its clicks to the page).
+#[test]
+fn clicking_a_tab_on_a_side_shows_it() {
+    use egui_kittest::kittest::Queryable;
+    use pdfcraft_ui_egui::split::Pane;
+    let mut h = harness(&[("a.pdf", 3), ("b.pdf", 2), ("c.pdf", 2)]);
+    let index = |h: &Harness<'static, PdfKubApp>, name: &str| (0..h.state().views.len()).find(|&i| name_of(h.state(), i) == name).unwrap();
+    let c = index(&h, "c.pdf");
+    h.state_mut().move_to_other_side(c);
+    settle(&mut h);
+    let (a, b) = (index(&h, "a.pdf"), index(&h, "b.pdf"));
+    // The left side shows one of a and b; click the other one's tab.
+    let shown = h.state().shown_in(Pane::Left).unwrap();
+    let (other, name) = if shown == a { (b, "b.pdf") } else { (a, "a.pdf") };
+    let tab = h.get_by_label(name).rect();
+    let page = h.state().views[shown].page_screen_rect(0).expect("left page on screen");
+    assert!(tab.bottom() <= page.top(), "tab {tab:?} reaches into the page {page:?}");
+    h.hover_at(tab.center());
+    h.run_steps(1);
+    h.drag_at(tab.center());
+    h.run_steps(1);
+    h.drop_at(tab.center());
+    h.run_steps(2);
+    assert_eq!(h.state().active, Some(other));
+    assert_eq!(h.state().shown_in(Pane::Left), Some(other));
+    assert_eq!(h.state().shown_in(Pane::Right).map(|i| name_of(h.state(), i)).as_deref(), Some("c.pdf"));
+}

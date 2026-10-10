@@ -313,7 +313,10 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
         ui.painter().hline(row.x_range(), row.top() + 1.0, Stroke::new(2.0, t.accent));
     }
     ui.painter().hline(row.x_range(), row.bottom() - 0.5, Stroke::new(1.0, t.divider));
-    let mut inner = ui.new_child(UiBuilder::new().max_rect(row.shrink2(vec2(6.0, 0.0))).layout(Layout::left_to_right(Align::Max)));
+    // The tabs stay inside their row: anything below it belongs to the pages, which would take
+    // the clicks of a tab reaching into them.
+    let mut inner = ui.new_child(UiBuilder::new().max_rect(row.shrink2(vec2(6.0, 0.0))).layout(Layout::left_to_right(Align::Center)));
+    inner.set_clip_rect(row.intersect(ui.clip_rect()));
     let shown = app.shown_in(pane);
     let mut close = None;
     let mut clicked = None;
@@ -321,8 +324,10 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
     let buttons = if pane == Pane::Right { 34.0 } else { 0.0 };
     inner.scope(|ui| {
         ui.style_mut().always_scroll_the_only_direction = true;
+        // No scroll bar under the tabs (it would push them out of the row); the wheel scrolls them.
         egui::ScrollArea::horizontal()
             .id_salt(("split-tabs", pane.slot()))
+            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
             .max_width((ui.available_width() - buttons).max(0.0))
             .auto_shrink([false, true])
             .show(ui, |ui| {
@@ -335,10 +340,9 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
                         let Some(doc) = app.session.get(app.views[i].id) else { continue };
                         let (name, dirty) = (doc.display_name(), doc.dirty);
                         let uid = app.views[i].uid;
-                        let resp = crate::chrome::tab(ui, t, "file-text", &name, dirty, shown == Some(i), &mut close, i);
-                        // Dragging a tab onto the other side moves it there.
-                        let drag = ui.interact(resp.rect, ui.id().with(("split-tab-drag", uid)), Sense::drag());
-                        if drag.drag_started() {
+                        // Clicked to show it; dragged onto the other side to move it there.
+                        let resp = crate::chrome::tab(ui, t, "file-text", &name, dirty, shown == Some(i), &mut close, i).interact(Sense::drag());
+                        if resp.drag_started() {
                             app.split.dragging = Some(uid);
                         }
                         if resp.clicked() {
