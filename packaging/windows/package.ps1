@@ -5,13 +5,13 @@
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
     pdfkub-<version>-windows-<arch>.msi            per-machine installer (WiX v5)
-    pdfkub-<version>-windows-<arch>-portable.zip   pdfkub.exe + pdfkub-cli.exe + portable.txt
+    pdfkub-<version>-windows-<arch>-portable.zip   pdfkub.exe + pdfkub-cli.exe + models\ + portable.txt
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
   zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
   warning when no signing secrets are set).
 
-  Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),
+  Needs: Rust (MSVC toolchain + the target), curl and the network (the OCR models), the Windows SDK (rc.exe, signtool.exe),
   and WiX v5: dotnet tool install --global wix --version 5.0.2
 
 .EXAMPLE
@@ -90,23 +90,22 @@ Copy-Item (Join-Path $Bin 'pdfkub.exe'), (Join-Path $Bin 'pdfkub-cli.exe') $Stag
 
 & (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'pdfkub.exe') (Join-Path $Stage 'pdfkub-cli.exe')
 
-# OCR models (cargo xtask models, or $env:PDFKUB_MODELS): shipped in models\ beside the exe, where
-# pdfcraft-ocr looks first, with their licence texts. Without them the MSI still builds, and
-# Recognize text says the models are missing.
-$ModelsSrc = if ($env:PDFKUB_MODELS) { $env:PDFKUB_MODELS } else { Join-Path $Root 'assets\models' }
-$ModelFiles = 'text-detection.rten', 'text-recognition.rten', 'thai-recognition.onnx', 'thai-recognition.yml'
-$WixModels = @()
-if (@($ModelFiles | Where-Object { -not (Test-Path (Join-Path $ModelsSrc $_)) }).Count -eq 0) {
-  $ModelsStage = Join-Path $Stage 'models'
-  New-Item -ItemType Directory -Force -Path $ModelsStage | Out-Null
-  foreach ($f in $ModelFiles) {
-    Copy-Item (Join-Path $ModelsSrc $f) $ModelsStage
-    Copy-Item (Join-Path $ModelsSrc "$f.LICENCE.txt") $ModelsStage -ErrorAction SilentlyContinue
-  }
-  $WixModels = @('-d', "ModelsDir=$ModelsStage")
-  Write-Output "OCR models included from $ModelsSrc"
+# OCR models (#103), English and Thai: the app looks in models\ beside pdfkub.exe. `cargo xtask models` fetches every
+# ATTRIBUTION.toml `kind = "model"` file (verified by SHA-256) with its licence and ATTRIBUTION.txt;
+# the MSI and the portable zip take the whole folder, so new models ship without naming them here.
+$Models = Join-Path $Stage 'models'
+New-Item -ItemType Directory -Force -Path $Models | Out-Null
+Push-Location $Root
+if ($env:PDFKUB_MODELS) {
+  # A folder already filled by `cargo xtask models DIR` (offline builds).
+  Copy-Item (Join-Path $env:PDFKUB_MODELS '*') $Models -Recurse
+  Pop-Location
 } else {
-  Write-Warning "OCR models not found in $ModelsSrc (run cargo xtask models): the package has no text recognition"
+  try { Invoke-Native 'cargo xtask models' { cargo xtask models $Models } } finally { Pop-Location }
+}
+Remove-Item -Force (Join-Path $Models '*.part') -ErrorAction SilentlyContinue
+if (-not (Test-Path (Join-Path $Models 'ATTRIBUTION.txt')) -or -not (Get-ChildItem (Join-Path $Models '*.LICENCE.txt'))) {
+  throw "no OCR models in $Models after cargo xtask models"
 }
 
 # ---- MSI ---------------------------------------------------------------------------------------
@@ -114,8 +113,8 @@ $Msi = Join-Path $Dist "pdfkub-$Version-windows-$Arch.msi"
 Invoke-Native 'wix build' {
   wix build (Join-Path $PSScriptRoot 'pdfkub.wxs') -arch $Arch `
     (Join-Path $PSScriptRoot 'installer-ui.wxs') `
-    -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\pdfkub.ico')" `
-    @WixModels -o $Msi
+    -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "ModelsDir=$Models" -d "IconPath=$(Join-Path $Root 'assets\app-icon\pdfkub.ico')" `
+    -o $Msi
 }
 # Inspect the built MSI, not just the XML, before signing/publishing it. In a child process, so
 # its Windows Installer database handle is gone before signtool opens the MSI.
@@ -129,7 +128,7 @@ $Portable = Join-Path $TargetDir "windows-package\pdfkub-$Version-windows-$Arch-
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
-if (Test-Path (Join-Path $Stage 'models')) { Copy-Item (Join-Path $Stage 'models') $Portable -Recurse }
+Copy-Item -Recurse $Models (Join-Path $Portable 'models')
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE') {
   $p = Join-Path $Root $f
   if (Test-Path $p) { Copy-Item $p $Portable }

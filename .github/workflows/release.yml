@@ -213,7 +213,7 @@ jobs:
       - name: Apply version override
         if: inputs.version != ''
         run: cargo xtask version set "$PDFKUB_VERSION"
-      - name: Build and package (AppImage, deb, rpm, tar.gz)
+      - name: Build and package (AppImage, deb, rpm, tar.gz, CLI tar.gz)
         env:
           CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
           CRAFT_FONTS_REQUIRED: "1"
@@ -222,7 +222,17 @@ jobs:
         run: |
           dpkg-deb --info dist/release/*.deb
           dpkg-deb --contents dist/release/*.deb | grep -E 'usr/bin/pdfkub$|metainfo|applications'
+          # The OCR models (#103), where the installed app looks: <bin>/../share/pdfkub/models.
+          dpkg-deb --contents dist/release/*.deb | grep -E 'usr/share/pdfkub/models/.+\.rten$'
+          # Named exactly: dist/release also holds the CLI-only tar.gz, and `tar -tzf a b` reads b as a member.
+          tar -tzf "dist/release/pdfkub-$PDFKUB_VERSION-linux-${{ matrix.arch }}.tar.gz" | grep -E '/share/pdfkub/models/.+\.rten$'
           ldd target/release/pdfkub
+          # The CLI-only archive: the binary and its licences, and it runs.
+          cli="dist/release/pdfkub-cli-$PDFKUB_VERSION-linux-${{ matrix.arch }}.tar.gz"
+          tar -tzf "$cli" | grep -E '/pdfkub-cli$'
+          tar -tzf "$cli" | grep -E '/LICENSE-APACHE$'
+          mkdir -p "$RUNNER_TEMP/cli" && tar -xzf "$cli" -C "$RUNNER_TEMP/cli"
+          "$RUNNER_TEMP/cli/pdfkub-cli-$PDFKUB_VERSION-linux-${{ matrix.arch }}/pdfkub-cli" --version
           python3 -c "import yaml; m = yaml.safe_load(open('packaging/linux/flatpak/io.github.teh_natsu.pdfkub.yml')); assert m['id'] == 'io.github.teh_natsu.pdfkub'"
           for appimage in dist/release/*.AppImage; do
             chmod +x "$appimage"

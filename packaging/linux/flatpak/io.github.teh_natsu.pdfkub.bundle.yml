@@ -45,6 +45,8 @@ modules:
       - install -Dm644 share/mime/packages/io.github.teh_natsu.pdfkub.xml /app/share/mime/packages/io.github.teh_natsu.pdfkub.xml
       # Already has the release's version and date substituted by package.sh.
       - install -Dm644 share/metainfo/io.github.teh_natsu.pdfkub.metainfo.xml /app/share/metainfo/io.github.teh_natsu.pdfkub.metainfo.xml
+      # OCR models (with their licences), found at /app/bin/../share/pdfkub/models.
+      - mkdir -p /app/share/pdfkub && cp -R share/pdfkub/models /app/share/pdfkub/
       # Licences, including the embedded craft-fonts' OFL texts.
       - mkdir -p /app/share/icons /app/share/doc && cp -R share/icons/hicolor /app/share/icons/ && cp -R share/doc/pdfkub /app/share/doc/
     sources:

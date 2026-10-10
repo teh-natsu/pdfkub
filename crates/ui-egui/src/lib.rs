@@ -65,6 +65,7 @@ pub use optimize_ui::{OptimizeDraft, OptimizeTab};
 pub use sign_ui::{DigitalIdEntry, SignDraft, SignStep};
 mod autoscroll;
 mod bidi;
+pub mod bulk_fields;
 mod dialogs;
 mod edit_text_ui;
 mod editing;
@@ -90,8 +91,22 @@ mod redact_ui;
 pub use redact_ui::{HiddenDraft, PagesDraft as RedactPagesDraft, RedactPrefs, SearchDraft as RedactSearchDraft};
 pub mod i18n;
 
+/// [`PdfKubApp::date_text`] for callers that already borrow other parts of the app.
+pub(crate) fn date_text(session: &Session, fmt: Option<&str>) -> Result<String, String> {
+    let lang = session.date_language().unwrap_or(i18n::current().code());
+    session.today_text(fmt, Some(lang))
+}
+
+/// Today in Preferences ▸ Date format for stamping into a PDF; refused when it has characters
+/// Fill & Sign can't write yet (see [`pdfcraft_engine::dates::unwritable`]).
+pub(crate) fn date_text_for_pdf(session: &Session) -> Result<String, String> {
+    let lang = session.date_language().unwrap_or(i18n::current().code());
+    session.today_text_for_pdf(None, Some(lang))
+}
+
 /// The longest author name kept (Preferences ▸ Identity, restored settings).
 pub(crate) const MAX_AUTHOR_CHARS: usize = 200;
+
 pub mod portable;
 mod protect;
 mod recovery;
@@ -104,7 +119,7 @@ mod widgets;
 
 use pdfcraft_engine::{DocId, Session};
 
-pub use canvas::DocView;
+pub use canvas::{DocView, RasterMemory};
 pub use editing::{CloseRequest, SaveTarget};
 pub use files::{ExtractDraft, FilePurpose, FileRequest, RotateDraft, SplitDraft, SplitMode, SplitPlan};
 pub use recovery::{AUTOSAVE_SECS, RecoveryMeta, RecoveryStore};
@@ -229,6 +244,8 @@ pub enum Dialog {
     ReplacePages,
     /// Prepare a form ▸ Field Properties.
     FieldProps,
+    /// Shared properties of several selected form fields.
+    BulkFieldProps,
     /// Redact a PDF ▸ Redact pages, Find text and redact, Set properties, apply confirmation.
     RedactPages,
     RedactSearch,
@@ -334,6 +351,8 @@ pub struct PasswordPrompt {
     pub bytes: std::sync::Arc<Vec<u8>>,
     pub input: String,
     pub error: Option<String>,
+    /// A late startup file must stay in the background even after it is unlocked.
+    activate: bool,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -358,6 +377,9 @@ pub struct PdfKubApp {
     /// Documents and view). Continuous scrolling at fit width by default, which never snaps
     /// between pages.
     pub view_defaults: canvas::ViewDefaults,
+    /// The Preferences ▸ Date format box while it's being edited, or while it holds an invalid
+    /// pattern (the session keeps the last valid one).
+    pub date_format_draft: Option<String>,
     /// Explicit CLI/control mode lasts for this session and is never persisted.
     mode_override: Option<Mode>,
     pub left: LeftPanel,
@@ -376,6 +398,8 @@ pub struct PdfKubApp {
     pub theme_preference: ThemePreference,
     /// Interface language preference: `auto` (follow the system) or a code from [`i18n::LANGUAGES`].
     pub language: String,
+    /// Preferences: bake Fill & Sign marks into the page when saving. Off, so a normal save stays editable.
+    pub flatten_fill_sign_on_save: bool,
     pub dialog: Option<Dialog>,
     /// How to ask for the latest release (the desktop app sets it; see `updates`).
     pub update_source: Option<updates::UpdateSource>,
@@ -400,6 +424,10 @@ pub struct PdfKubApp {
     pub full_screen: bool,
     /// Files delivered asynchronously (web drag-and-drop, web file picker).
     pub inbox: Inbox,
+    /// The browser's startup `?file=` download. Unlike a deliberate Open or drop, a late
+    /// arrival opens in the background once the user has started working (#171).
+    pub startup_inbox: Inbox,
+    startup_superseded: bool,
     /// Asynchronous opens that failed (web `?file=` fetches), shown as a notice.
     pub failed_inbox: FailedInbox,
     /// Requests from the operating system, polled every frame (macOS Apple events).
@@ -546,6 +574,7 @@ pub struct PdfKubApp {
     /// The Comment Properties dialog's state.
     pub comment_props: Option<comment_props::PropsDraft>,
     pub field_props: Option<prepare::FieldDraft>,
+    pub bulk_field_props: Option<bulk_fields::Draft>,
     pub redact_prefs: RedactPrefs,
     pub redact_pages_draft: RedactPagesDraft,
     pub redact_search: RedactSearchDraft,
@@ -606,6 +635,25 @@ impl Default for PdfKubApp {
     }
 }
 
+/// A restored colour: an `[r, g, b]` array of finite numbers, each clamped to 0–1 (restored
+/// settings are untrusted). Anything else (a string, a wrong length, a null or a non-finite
+/// number) is refused whole, so the caller keeps its default.
+fn rgb_triple(v: &serde_json::Value) -> Option<[f64; 3]> {
+    let a = v.as_array()?;
+    if a.len() != 3 {
+        return None;
+    }
+    let mut out = [0.0f64; 3];
+    for (slot, x) in out.iter_mut().zip(a.iter()) {
+        let n = x.as_f64()?;
+        if !n.is_finite() {
+            return None;
+        }
+        *slot = n.clamp(0.0, 1.0);
+    }
+    Some(out)
+}
+
 impl PdfKubApp {
     pub fn new() -> Self {
         Self {
@@ -616,6 +664,7 @@ impl PdfKubApp {
             mode: Mode::AllTools,
             default_mode: Mode::AllTools,
             view_defaults: Default::default(),
+            date_format_draft: None,
             mode_override: None,
             left: LeftPanel::AllTools,
             left_open: true,
@@ -627,6 +676,7 @@ impl PdfKubApp {
             theme: ThemeKind::Light,
             theme_preference: ThemePreference::Light,
             language: i18n::AUTO.to_string(),
+            flatten_fill_sign_on_save: false,
             dialog: None,
             update_source: None,
             updates: updates::Updates::default(),
@@ -643,6 +693,8 @@ impl PdfKubApp {
             password_prompt: None,
             full_screen: false,
             inbox: Default::default(),
+            startup_inbox: Default::default(),
+            startup_superseded: false,
             failed_inbox: Default::default(),
             os_events: None,
             close_request: None,
@@ -730,6 +782,7 @@ impl PdfKubApp {
             signature_images: Default::default(),
             comment_props: None,
             field_props: None,
+            bulk_field_props: None,
             redact_prefs: RedactPrefs::default(),
             redact_pages_draft: RedactPagesDraft::default(),
             redact_search: RedactSearchDraft::default(),
@@ -753,12 +806,14 @@ impl PdfKubApp {
     fn apply_initial_view(&mut self, index: usize, v: &pdfcraft_engine::InitialView) {
         use pdfcraft_engine::{InitialLayout as L, Magnification as M, Navigation as N};
         let pages = self.session.get(self.views[index].id).map_or(0, |d| d.info.pages.len());
-        match v.navigation {
-            N::PageOnly => {}
-            N::Bookmarks => self.right = Some(RightPanel::Bookmarks),
-            N::Pages => self.right = Some(RightPanel::Pages),
-            N::Attachments => self.right = Some(RightPanel::Attachments),
-            N::Layers => self.right = Some(RightPanel::Layers),
+        if self.active == Some(index) {
+            match v.navigation {
+                N::PageOnly => {}
+                N::Bookmarks => self.right = Some(RightPanel::Bookmarks),
+                N::Pages => self.right = Some(RightPanel::Pages),
+                N::Attachments => self.right = Some(RightPanel::Attachments),
+                N::Layers => self.right = Some(RightPanel::Layers),
+            }
         }
         let view = &mut self.views[index];
         match v.layout {
@@ -788,21 +843,37 @@ impl PdfKubApp {
 
     /// Open a document and make it the active tab. Encrypted files raise the password prompt.
     pub fn open_bytes(&mut self, name: &str, path: Option<String>, bytes: Vec<u8>) -> Result<(), String> {
-        // Images and text files become new, unsaved PDFs (Create a PDF).
-        if let Some(r) = self.open_converted(name, &bytes) {
-            return r;
-        }
-        self.try_open(name, path, std::sync::Arc::new(bytes), None)
+        self.startup_superseded = true;
+        self.open_bytes_with_focus(name, path, bytes, true)
     }
 
-    fn try_open(&mut self, name: &str, path: Option<String>, bytes: std::sync::Arc<Vec<u8>>, password: Option<&str>) -> Result<(), String> {
+    fn open_bytes_with_focus(&mut self, name: &str, path: Option<String>, bytes: Vec<u8>, activate: bool) -> Result<(), String> {
+        // Images and text files become new, unsaved PDFs (Create a PDF).
+        let active = self.active;
+        if let Some(r) = self.open_converted(name, &bytes) {
+            if !activate {
+                self.active = active;
+            }
+            return r;
+        }
+        self.try_open(name, path, std::sync::Arc::new(bytes), None, activate)
+    }
+
+    fn try_open(
+        &mut self,
+        name: &str,
+        path: Option<String>,
+        bytes: std::sync::Arc<Vec<u8>>,
+        password: Option<&str>,
+        activate: bool,
+    ) -> Result<(), String> {
         use pdfcraft_render::OpenError;
         let size = bytes.len();
         let id = match self.session.open(name, path.clone(), bytes.clone(), password) {
             Ok(id) => id,
             Err(e @ (OpenError::NeedsPassword | OpenError::WrongPassword)) => {
                 let error = matches!(e, OpenError::WrongPassword).then(|| "Incorrect password. Try again.".to_string());
-                self.password_prompt = Some(PasswordPrompt { name: name.to_string(), path, bytes, input: String::new(), error });
+                self.password_prompt = Some(PasswordPrompt { name: name.to_string(), path, bytes, input: String::new(), error, activate });
                 return Ok(());
             }
             Err(e) => return Err(e.to_string()),
@@ -811,7 +882,7 @@ impl PdfKubApp {
         let doc = self.session.get(id).ok_or("the document could not be opened")?;
         let pages = doc.info.pages.len();
         // Acrobat opens straight to the Comments panel when a document has comments.
-        if self.right.is_none() {
+        if activate && self.right.is_none() {
             self.right = if !doc.info.annotations.is_empty() {
                 Some(RightPanel::Comments)
             } else if !doc.info.outline.is_empty() {
@@ -822,12 +893,14 @@ impl PdfKubApp {
         }
         let initial = doc.initial_view();
         self.views.push(DocView::new(id, &doc.info, self.view_defaults));
-        self.active = Some(self.views.len() - 1);
+        if activate {
+            self.active = Some(self.views.len() - 1);
+        }
         self.apply_initial_view(self.views.len() - 1, &initial);
-        if let Some(mode) = self.mode_override {
+        if activate && let Some(mode) = self.mode_override {
             // Explicit mode options do not reset independent --tool / --left choices.
             self.mode = mode;
-        } else if self.mode != self.default_mode {
+        } else if activate && self.mode != self.default_mode {
             // Switch workspace like the mode bar, but a left panel the user (or `--left closed`)
             // closed stays closed, and an unchanged mode keeps the tool panel the user chose.
             let left_open = self.left_open;
@@ -841,8 +914,12 @@ impl PdfKubApp {
         }
         // What the form's scripts said while it opened (messages, errors) shows now, not with
         // the next edit.
-        let out = self.session.take_js_output(id);
-        self.handle_js(id, out);
+        // Background documents keep their script output until their tab is selected: a print
+        // or save request must never act on the current document instead.
+        if activate {
+            let out = self.session.take_js_output(id);
+            self.handle_js(id, out);
+        }
         Ok(())
     }
 
@@ -917,6 +994,7 @@ impl PdfKubApp {
     /// Browsers read dropped files asynchronously; the bytes land in `inbox` and open next frame.
     #[cfg(target_arch = "wasm32")]
     fn open_dropped(&mut self, f: egui::DroppedFileHandle, ctx: &egui::Context) {
+        self.startup_superseded = true;
         let inbox = self.inbox.clone();
         let ctx = ctx.clone();
         wasm_bindgen_futures::spawn_local(async move {
@@ -977,10 +1055,11 @@ impl PdfKubApp {
     pub fn submit_password(&mut self, password: Option<String>) {
         let Some(p) = self.password_prompt.take() else { return };
         let Some(pw) = password else { return };
-        match self.try_open(&p.name, p.path, p.bytes, Some(&pw)) {
+        match self.try_open(&p.name, p.path, p.bytes, Some(&pw), p.activate) {
             Err(e) => self.notify_fmt("Couldn't open {name}: {e}", &[("name", &p.name), ("e", &e.to_string())]),
-            // A recovered encrypted document is open once the prompt is gone.
-            Ok(()) if self.password_prompt.is_none() => {
+            // A recovered encrypted document is open once its foreground prompt is gone.
+            // Unlocking a background startup file must not finish another file's recovery.
+            Ok(()) if p.activate && self.password_prompt.is_none() => {
                 if let Some(meta) = self.pending_recovered.clone() {
                     self.finish_recovery(&meta);
                 }
@@ -1014,6 +1093,7 @@ impl PdfKubApp {
     }
 
     pub fn open_dialog(&mut self) {
+        self.startup_superseded = true;
         #[cfg(not(target_arch = "wasm32"))]
         self.pick(
             pickers::PickFor::Open,
@@ -1174,6 +1254,12 @@ impl PdfKubApp {
         self.notify_fmt("`{command}` {when}", &[("command", command), ("when", &when)]);
     }
 
+    /// Today in `fmt` (or Preferences ▸ Date format), with month and weekday names in the date
+    /// language, or the interface language when it follows that.
+    pub fn date_text(&self, fmt: Option<&str>) -> Result<String, String> {
+        date_text(&self.session, fmt)
+    }
+
     /// Select the workspace and its matching tool panel, just like the mode bar.
     pub(crate) fn select_mode(&mut self, mode: Mode) {
         self.mode = mode;
@@ -1212,7 +1298,24 @@ impl PdfKubApp {
             "default_zoom": self.view_defaults.zoom_name(),
             "highlight_fields": self.view_defaults.highlight_fields,
             "language": self.language,
+            "flatten_fill_sign": self.flatten_fill_sign_on_save,
+            "date_format": self.session.date_format(),
+            // Null follows the interface language.
+            "date_language": self.session.date_language(),
             "author": self.comment_prefs.author,
+            // Per-tool comment defaults (colours, opacity, widths), so Make Current
+            // Properties Default survives a restart (#340).
+            "comment_styles": self
+                .comment_prefs
+                .styles()
+                .map(|(t, s)| serde_json::json!({
+                    "tool": t.command(),
+                    "color": s.color,
+                    "opacity": s.opacity,
+                    "width": s.width,
+                    "fill": s.fill,
+                }))
+                .collect::<Vec<_>>(),
             // Drawn signatures keep their original form (older settings read the same).
             "signature": match &self.signature { Some(fill_sign::SavedSig::Drawn(s)) => Some(s), _ => None },
             "signature_text": match &self.signature { Some(fill_sign::SavedSig::Typed(t)) => Some(t), _ => None },
@@ -1266,10 +1369,48 @@ impl PdfKubApp {
         if let Some(language) = v["language"].as_str().and_then(i18n::normalize_pref) {
             self.language = language.to_string();
         }
+        if let Some(on) = v["flatten_fill_sign"].as_bool() {
+            self.flatten_fill_sign_on_save = on;
+        }
+        // Settings are untrusted: an unusable pattern keeps the default.
+        if let Some(f) = v["date_format"].as_str() {
+            let _ = self.session.set_date_format(f);
+        }
+        if let Some(l) = v["date_language"].as_str() {
+            let _ = self.session.set_date_language(Some(l));
+        }
         // An empty or missing name keeps the login-name default; settings are untrusted, so the
         // name is cut to a sane length.
         if let Some(author) = v["author"].as_str().map(str::trim).filter(|a| !a.is_empty()) {
             self.comment_prefs.author = author.chars().take(MAX_AUTHOR_CHARS).collect();
+        }
+        // Per-tool comment styles (#340): each field goes through its clamping setter, so a
+        // malformed or hostile entry is clamped or ignored rather than trusted.
+        if let Some(styles) = v["comment_styles"].as_array() {
+            for e in styles {
+                let Some(tool) = e["tool"].as_str().and_then(crate::comments::CommentTool::from_command) else { continue };
+                if let Some(c) = rgb_triple(&e["color"]) {
+                    self.comment_prefs.set_color(tool, c);
+                }
+                if let Some(o) = e["opacity"].as_f64() {
+                    self.comment_prefs.set_opacity(tool, o);
+                }
+                if let Some(w) = e["width"].as_f64() {
+                    self.comment_prefs.set_width(tool, w);
+                }
+                // `"fill": null` is a saved "no fill", which clears a tool's default fill; a
+                // missing or malformed fill keeps it.
+                let fill = match e.get("fill") {
+                    Some(serde_json::Value::Null) => Some(None),
+                    Some(v) => rgb_triple(v).map(Some),
+                    None => None,
+                };
+                if let Some(fill) = fill {
+                    let mut s = self.comment_prefs.style(tool);
+                    s.fill = fill;
+                    self.comment_prefs.set_style(tool, s);
+                }
+            }
         }
         if let Ok(s) = serde_json::from_value::<Vec<Vec<[f32; 2]>>>(v["signature"].clone())
             && s.iter().all(|st| st.iter().all(|p| p.iter().all(|x| x.is_finite())))
@@ -1350,6 +1491,8 @@ impl PdfKubApp {
             ("default-mode", _) => {
                 self.default_mode = Mode::parse(value).ok_or("default-mode must be all, read, edit, convert or sign")?;
             }
+            ("date-format", _) => self.session.set_date_format(value)?,
+            ("date-language", _) => self.session.set_date_language(Some(value).filter(|v| *v != "auto"))?,
             ("tool", _) => {
                 let g = pdfcraft_engine::catalog::group(value).ok_or_else(|| format!("unknown tool {value}"))?;
                 self.left = LeftPanel::Tool(g.id);
@@ -1425,6 +1568,14 @@ impl PdfKubApp {
                     self.view_defaults.with_zoom(value).ok_or("default-zoom must be fit-width, fit-page or a percentage from 8 to 6400")?;
             }
             ("organize", Some(v)) => v.organize = value != "off",
+            // `--grid-zoom 150`: the size of the pages in the organize grid, in percent.
+            ("grid-zoom", Some(v)) => {
+                let percent = value.trim_end_matches('%').parse::<f32>().map_err(|e| e.to_string())?;
+                if !percent.is_finite() || !canvas::GRID_ZOOM_RANGE.contains(&(percent / 100.0)) {
+                    return Err("grid-zoom must be between 50 and 300".into());
+                }
+                v.set_grid_zoom(percent / 100.0);
+            }
             ("rotate", Some(v)) => {
                 let deg: u16 = value.parse().map_err(|_| "rotate: 0, 90, 180 or 270")?;
                 if !deg.is_multiple_of(90) {
@@ -1503,6 +1654,13 @@ impl PdfKubApp {
                 };
             }
             ("author", _) => self.comment_prefs.author = value.to_string(),
+            ("flatten-fill-sign", _) => {
+                self.flatten_fill_sign_on_save = match value {
+                    "true" => true,
+                    "false" => false,
+                    _ => return Err("flatten-fill-sign must be true or false".into()),
+                };
+            }
             ("comment", Some(v)) => {
                 // `--comment 2:4` selects the 4th annotation of page 2 (1-based, as comment_list reports).
                 let (p, i) = value.split_once(':').ok_or("comment: PAGE:INDEX")?;
@@ -1511,7 +1669,10 @@ impl PdfKubApp {
                 v.comments.selected = Some((p.saturating_sub(1), i.saturating_sub(1)));
                 v.comments.reveal = true;
             }
-            (k, None) if ["page", "zoom", "layout", "cover", "organize", "fields", "find", "rotate", "select", "notice", "comment"].contains(&k) => {
+            (k, None)
+                if ["page", "zoom", "layout", "cover", "organize", "grid-zoom", "fields", "find", "rotate", "select", "notice", "comment"]
+                    .contains(&k) =>
+            {
                 return Err(format!("`{k}` needs an open document"));
             }
             (other, _) => return Err(format!("unknown option {other}")),
@@ -1547,7 +1708,13 @@ impl PdfKubApp {
                 && !ctx.egui_wants_keyboard_input()
                 && ctx.input_mut(|input| input.consume_shortcut(&egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, Key::A)))
             {
-                self.views[i].select_all();
+                if self.is_preparing() {
+                    if let Some(doc) = self.session.get(self.views[i].id) {
+                        prepare::select_all(&mut self.views[i], &doc.form);
+                    }
+                } else {
+                    self.views[i].select_all();
+                }
             }
             self.tool_keys(i, ctx);
             canvas::shortcuts(&mut self.views[i], ctx);
@@ -1630,6 +1797,8 @@ impl eframe::App for PdfKubApp {
             }
         }
         self.sync_theme(ctx);
+        // Remember user work even if its tab is subsequently closed or Home is selected.
+        self.startup_superseded |= !self.views.is_empty() || self.combine_showing() || self.dialog.is_some() || self.password_prompt.is_some();
         // Before taking this frame's drop: the grid must be drawn once with the pointer where
         // the files were let go before the gap is read.
         self.finish_grid_drop(ctx);
@@ -1656,6 +1825,22 @@ impl eframe::App for PdfKubApp {
                 self.notify_fmt("Couldn't open {name}: {e}", &[("name", &name), ("e", &e.to_string())]);
             }
         }
+        // Don't replace a pending prompt or import. A startup file may need its own password
+        // prompt, so its bytes stay queued until the current interaction finishes.
+        if self.password_prompt.is_none()
+            && self.image_import.is_none()
+            && self.dialog.is_none()
+            && self.close_request.is_none()
+            && self.pending_link.is_none()
+        {
+            let startup = self.startup_inbox.lock().map(|mut q| std::mem::take(&mut *q)).unwrap_or_default();
+            for (name, bytes) in startup {
+                let activate = !self.startup_superseded;
+                if let Err(e) = self.open_bytes_with_focus(&name, None, bytes, activate) {
+                    self.notify_fmt("Couldn't open {name}: {e}", &[("name", &name), ("e", &e)]);
+                }
+            }
+        }
         let failed: Vec<(String, String)> = self.failed_inbox.lock().map(|mut q| std::mem::take(&mut *q)).unwrap_or_default();
         for (name, e) in failed {
             self.notify_fmt("Couldn't open {name}: {e}", &[("name", &name), ("e", &e)]);
@@ -1670,6 +1855,10 @@ impl eframe::App for PdfKubApp {
                 // Like closing the window: `guard_quit` asks about unsaved changes.
                 OsEvent::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
             }
+        }
+        if let Some((_, id)) = self.active_ids() {
+            let out = self.session.take_js_output(id);
+            self.handle_js(id, out);
         }
         if let Some(mut control) = self.control.take() {
             control.tick(ctx, self);
@@ -1707,28 +1896,7 @@ impl eframe::App for PdfKubApp {
         self.process_file_requests();
         #[cfg(not(target_arch = "wasm32"))]
         self.process_picked();
-        // Pull finished renders into textures for every open document.
         self.settle_panes();
-        for i in 0..self.views.len() {
-            let id = self.views[i].id;
-            let Some(doc) = self.session.get(id) else { continue };
-            if !self.views.iter().enumerate().any(|(j, v)| j != i && v.id == id) {
-                self.views[i].receive(ctx, &doc.renderer);
-            } else if self.views[..i].iter().all(|v| v.id != id) {
-                // One document on both sides of a split view: its renders are pulled once and
-                // shared, each side taking those at its own scale.
-                let mut results = Vec::new();
-                let budget = if doc.renderer.is_inline() { 1 } else { usize::MAX };
-                while results.len() < budget
-                    && let Some(r) = doc.renderer.try_recv()
-                {
-                    results.push(r);
-                }
-                for v in self.views.iter_mut().filter(|v| v.id == id) {
-                    v.receive_shared(ctx, &results);
-                }
-            }
-        }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
@@ -1738,6 +1906,9 @@ impl eframe::App for PdfKubApp {
         if !self.fonts_ready {
             ctx.request_repaint();
             return;
+        }
+        for view in &mut self.views {
+            view.begin_render_frame();
         }
         // The window shows the active document's name (or title, if it asks for that).
         let title = self
@@ -1765,6 +1936,7 @@ impl eframe::App for PdfKubApp {
             // Notices too: a refused field value or a failed save must be seen in full screen.
             self.show_progress(&ctx);
             widgets::toast(self, &ctx);
+            self.finish_render_frame(&ctx);
             return;
         }
         chrome::tab_strip(self, ui);
@@ -1790,5 +1962,50 @@ impl eframe::App for PdfKubApp {
         dialogs::show(self, &ctx);
         self.show_progress(&ctx);
         widgets::toast(self, &ctx);
+        self.finish_render_frame(&ctx);
+    }
+}
+
+impl PdfKubApp {
+    fn finish_render_frame(&mut self, ctx: &egui::Context) {
+        // The tabs in view: the active one, and with a split view the one the other side shows.
+        let mut shown: Vec<usize> = self.active.into_iter().collect();
+        if !self.full_screen && self.is_split() {
+            for pane in [split::Pane::Left, split::Pane::Right] {
+                if let Some(i) = self.shown_in(pane).filter(|i| !shown.contains(i)) {
+                    shown.push(i);
+                }
+            }
+        }
+        // Retire hidden documents before admitting the visible documents' textures, so the
+        // three cache limits apply to the application, regardless of how many tabs are open.
+        for i in 0..self.views.len() {
+            if shown.contains(&i) {
+                continue;
+            }
+            let id = self.views[i].id;
+            let Some(doc) = self.session.get(id) else { continue };
+            if shown.iter().any(|&s| self.views[s].id == id) {
+                self.views[i].suspend_textures();
+            } else {
+                self.views[i].suspend_rendering(&doc.renderer);
+            }
+        }
+        let mut done: Vec<DocId> = Vec::new();
+        for &i in &shown {
+            let id = self.views[i].id;
+            if done.contains(&id) {
+                continue;
+            }
+            done.push(id);
+            let Some(doc) = self.session.get(id) else { continue };
+            let mut views: Vec<&mut canvas::DocView> =
+                self.views.iter_mut().enumerate().filter(|(j, v)| shown.contains(j) && v.id == id).map(|(_, v)| v).collect();
+            if let [view] = views.as_mut_slice() {
+                view.finish_render_frame(ctx, &doc.info, &doc.renderer);
+            } else {
+                canvas::DocView::finish_shared_render_frame(&mut views, ctx, &doc.info, &doc.renderer);
+            }
+        }
     }
 }

@@ -104,6 +104,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$WORK/bin/pdfkub" "$APP/Contents/MacOS/PdfKub"
 cp "$ROOT/assets/app-icon/pdfkub.icns" "$APP/Contents/Resources/PdfKub.icns"
 copy_font_licences "$APP/Contents/Resources"
+# OCR models: the app finds them at Contents/MacOS/../Resources/models. Before signing, so the
+# bundle's seal covers them.
+stage_models "$APP/Contents/Resources/models"
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@SHORT_VERSION@/$SHORT_VERSION/g" \
   -e "s/@BUILD_SHA@/${PDFKUB_BUILD_SHA:-unknown}/g" \
   "$HERE/Info.plist.in" >"$APP/Contents/Info.plist"

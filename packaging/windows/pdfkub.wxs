@@ -68,14 +68,10 @@
     <DirectoryRef Id="INSTALLFOLDER">
       <Directory Id="ModelsFolder" Name="models" />
     </DirectoryRef>
+    <!-- Every file `cargo xtask models` fetched (package.ps1), with the licences and
+         ATTRIBUTION.txt: one component each, so new models ship without naming them here. -->
     <ComponentGroup Id="PdfkubModels" Directory="ModelsFolder">
-      <Component Id="ModelTextDetection"><File Id="TextDetection" Source="$(var.ModelsDir)\text-detection.rten" KeyPath="yes" /></Component>
-      <Component Id="ModelTextDetectionLicence"><File Id="TextDetectionLicence" Source="$(var.ModelsDir)\text-detection.rten.LICENCE.txt" KeyPath="yes" /></Component>
-      <Component Id="ModelTextRecognition"><File Id="TextRecognition" Source="$(var.ModelsDir)\text-recognition.rten" KeyPath="yes" /></Component>
-      <Component Id="ModelTextRecognitionLicence"><File Id="TextRecognitionLicence" Source="$(var.ModelsDir)\text-recognition.rten.LICENCE.txt" KeyPath="yes" /></Component>
-      <Component Id="ModelThaiRecognition"><File Id="ThaiRecognition" Source="$(var.ModelsDir)\thai-recognition.onnx" KeyPath="yes" /></Component>
-      <Component Id="ModelThaiRecognitionLicence"><File Id="ThaiRecognitionLicence" Source="$(var.ModelsDir)\thai-recognition.onnx.LICENCE.txt" KeyPath="yes" /></Component>
-      <Component Id="ModelThaiConfig"><File Id="ThaiConfig" Source="$(var.ModelsDir)\thai-recognition.yml" KeyPath="yes" /></Component>
+      <Files Include="$(var.ModelsDir)\*" />
     </ComponentGroup>
   </Fragment>
 <?endif?>

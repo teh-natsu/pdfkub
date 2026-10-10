@@ -115,9 +115,11 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfKubApp, t: &Tokens) -> (bool,
     });
     if !available {
         ui.label(
-            egui::RichText::new(tl!("Text recognition isn't installed: its models are missing (run `cargo xtask models`, or set PDFKUB_MODELS)."))
-                .small()
-                .color(t.text_muted),
+            egui::RichText::new(tl!(
+                "Text recognition isn't installed: its model files are missing. Reinstall PdfKub, or set PDFKUB_MODELS to the folder that holds them."
+            ))
+            .small()
+            .color(t.text_muted),
         );
         ui.add_space(6.0);
     }
