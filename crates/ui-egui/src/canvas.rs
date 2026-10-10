@@ -3888,7 +3888,10 @@ trailer << /Root 1 0 R >>
         }
         app.finish_render_frame(&ctx);
         let total: usize = app.views.iter().map(|v| v.thumbs.values().map(|p| texture_bytes(&p.tex)).sum::<usize>()).sum();
-        assert!(total <= 132 * 171 * 4);
+        // One document's thumbnail: the synthetic one, or (on a machine where the worker runs as
+        // soon as the queue is set, such as a one-core VM) its real render, already received.
+        assert!(app.views.iter().filter(|v| !v.thumbs.is_empty()).count() <= 1);
+        assert!(total <= THUMB_BYTES, "{total}");
         assert!(app.views.iter().take(5).all(|v| v.thumbs.is_empty() && v.last_queue.is_empty()));
         app.close_tab(5);
         assert!(app.views.iter().all(|v| v.thumbs.is_empty()));
