@@ -928,7 +928,7 @@ mod tests {
                 )
             })
         };
-        started_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        started_rx.recv_timeout(Duration::from_secs(30)).unwrap();
         let cancelled = Arc::new(AtomicBool::new(false));
         let checks = Arc::new(AtomicUsize::new(0));
         let (done_tx, done_rx) = mpsc::channel();
@@ -945,13 +945,14 @@ mod tests {
                 done_tx.send(result.unwrap().is_none()).unwrap();
             })
         };
-        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        // Generous: a loaded CI machine (the FreeBSD VM) can take seconds to start a thread.
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
         while checks.load(Ordering::Relaxed) == 0 {
             assert!(std::time::Instant::now() < deadline);
             std::thread::yield_now();
         }
         cancelled.store(true, Ordering::Release);
-        assert!(done_rx.recv_timeout(Duration::from_secs(2)).unwrap());
+        assert!(done_rx.recv_timeout(Duration::from_secs(30)).unwrap());
         waiter.join().unwrap();
         release_tx.send(()).unwrap();
         assert!(initializer.join().unwrap().unwrap().is_some());
