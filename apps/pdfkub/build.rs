@@ -5,15 +5,20 @@
 //! cross-compile from macOS or Linux still links, unless `PDFKUB_REQUIRE_WINRES=1` turns it
 //! into an error (for release builds).
 
+#[path = "src/windows_manifest.rs"]
+mod windows_manifest;
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=../../assets/app-icon/pdfkub.ico");
+    println!("cargo:rerun-if-changed=src/windows_manifest.rs");
     println!("cargo:rerun-if-env-changed=PDFKUB_REQUIRE_WINRES");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
         return;
     }
     let mut res = winresource::WindowsResource::new();
     res.set_icon("../../assets/app-icon/pdfkub.ico")
+        .set_manifest(windows_manifest::WINDOWS_MANIFEST)
         .set("ProductName", "PdfKub")
         .set("FileDescription", "PdfKub PDF workbench")
         .set("LegalCopyright", "Copyright (c) the PdfKub and PdfCraft contributors. MIT OR Apache-2.0.")
