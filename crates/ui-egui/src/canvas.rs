@@ -1388,6 +1388,7 @@ impl DocView {
                     error: r.error.clone(),
                     text: r.text.clone(),
                     millis: r.millis,
+                    warnings: r.warnings.clone(),
                 };
                 uploaded = uploaded.saturating_add(v.receive_result(ctx, copy));
             }
