@@ -2151,3 +2151,4 @@ signature pad	Type	Digita
 	Move to the other side	Sposta sull'altro lato
 	Next tab	Scheda successiva
 	Previous tab	Scheda precedente
+	 ({n} at {dpi} dpi, the largest size they can be drawn at)	 ({n} a {dpi} dpi, la dimensione massima a cui si possono disegnare)

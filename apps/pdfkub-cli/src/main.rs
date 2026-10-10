@@ -147,6 +147,66 @@ fn flag<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).map(String::as_str)
 }
 
+#[derive(Clone, Copy)]
+struct OptionSpec {
+    name: &'static str,
+    takes_value: bool,
+}
+
+/// Refuse a long option `command` doesn't take (a misspelling) before any file is read.
+fn validate_options(command: &str, args: &[String], specs: &[OptionSpec]) -> Result<(), CliError> {
+    let mut i = 0;
+    while let Some(arg) = args.get(i) {
+        if let Some(name) = arg.strip_prefix("--") {
+            let Some(spec) = specs.iter().find(|spec| spec.name == arg) else {
+                return Err(format!("{command}: unknown option --{name}").into());
+            };
+            // A missing or malformed value is left to the command, which reports it in its own
+            // terms (`text` and `extract` explain what a page value must be).
+            i += if spec.takes_value { 2 } else { 1 };
+        } else {
+            i += 1;
+        }
+    }
+    Ok(())
+}
+
+const INFO_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--password", takes_value: true }];
+const TEXT_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--page", takes_value: true }, OptionSpec { name: "--password", takes_value: true }];
+const COMBINE_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--out", takes_value: true }];
+const EXTRACT_OPTIONS: &[OptionSpec] = &[
+    OptionSpec { name: "--out", takes_value: true },
+    OptionSpec { name: "--pages", takes_value: true },
+    OptionSpec { name: "--password", takes_value: true },
+];
+const SPLIT_OPTIONS: &[OptionSpec] = &[
+    OptionSpec { name: "--every", takes_value: true },
+    OptionSpec { name: "--before", takes_value: true },
+    OptionSpec { name: "--out-dir", takes_value: true },
+    OptionSpec { name: "--password", takes_value: true },
+];
+const RENDER_OPTIONS: &[OptionSpec] = &[
+    OptionSpec { name: "--page", takes_value: true },
+    OptionSpec { name: "--dpi", takes_value: true },
+    OptionSpec { name: "--out", takes_value: true },
+    OptionSpec { name: "--password", takes_value: true },
+];
+const CHECK_ONE_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--dpi", takes_value: true }, OptionSpec { name: "--edit", takes_value: false }];
+const CHECK_OPTIONS: &[OptionSpec] = &[
+    OptionSpec { name: "--timeout", takes_value: true },
+    OptionSpec { name: "--dpi", takes_value: true },
+    OptionSpec { name: "--json", takes_value: true },
+];
+const RUN_OPTIONS: &[OptionSpec] = &[
+    OptionSpec { name: "--root", takes_value: true },
+    OptionSpec { name: "--script", takes_value: true },
+    OptionSpec { name: "--out", takes_value: true },
+];
+const UI_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--control", takes_value: true }, OptionSpec { name: "--out", takes_value: true }];
+
+#[cfg(feature = "mcp")]
+const MCP_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--root", takes_value: true }, OptionSpec { name: "--compact", takes_value: false }];
+
 fn positional(args: &[String]) -> Vec<&str> {
     let mut out = Vec::new();
     let mut skip = false;
@@ -169,6 +229,7 @@ fn read(path: &str) -> Result<Arc<Vec<u8>>, String> {
 }
 
 fn info(args: &[String]) -> Result<(), CliError> {
+    validate_options("info", args, INFO_OPTIONS)?;
     let path = *positional(args).first().ok_or("info: missing file")?;
     let bytes = read(path)?;
     let password = flag(args, "--password");
@@ -202,6 +263,7 @@ fn info(args: &[String]) -> Result<(), CliError> {
 }
 
 fn text(args: &[String]) -> Result<(), CliError> {
+    validate_options("text", args, TEXT_OPTIONS)?;
     let path = *positional(args).first().ok_or("text: missing file")?;
     let mut selected_page = None;
     // Validate every supplied value before reading, retaining the first valid selection.
@@ -334,6 +396,7 @@ fn file_stem(path: &str) -> String {
 }
 
 fn combine(args: &[String]) -> Result<(), CliError> {
+    validate_options("combine", args, COMBINE_OPTIONS)?;
     let out = flag(args, "--out").ok_or("combine: missing --out")?;
     let inputs = positional(args);
     if inputs.len() < 2 {
@@ -345,6 +408,7 @@ fn combine(args: &[String]) -> Result<(), CliError> {
 }
 
 fn extract(args: &[String]) -> Result<(), CliError> {
+    validate_options("extract", args, EXTRACT_OPTIONS)?;
     let path = *positional(args).first().ok_or("extract: missing file")?;
     let out = flag(args, "--out").ok_or("extract: missing --out")?;
     let pages = page_list(flag(args, "--pages").ok_or("extract: missing --pages")?)?;
@@ -355,6 +419,7 @@ fn extract(args: &[String]) -> Result<(), CliError> {
 }
 
 fn split(args: &[String]) -> Result<(), CliError> {
+    validate_options("split", args, SPLIT_OPTIONS)?;
     use pdfcraft_engine::SplitBy;
     let path = *positional(args).first().ok_or("split: missing file")?;
     let by = match (flag(args, "--every"), flag(args, "--before")) {
@@ -379,6 +444,7 @@ fn split(args: &[String]) -> Result<(), CliError> {
 }
 
 fn render(args: &[String]) -> Result<(), CliError> {
+    validate_options("render", args, RENDER_OPTIONS)?;
     let path = *positional(args).first().ok_or("render: missing file")?;
     let page: usize = flag(args, "--page").unwrap_or("1").parse().map_err(|_| "bad --page")?;
     let page_index = page.checked_sub(1).ok_or("--page must be at least 1")?;
@@ -392,7 +458,10 @@ fn render(args: &[String]) -> Result<(), CliError> {
         Some("pam") => None,
         _ => return Err(format!("render: --out {out}: use a .png, .jpg, .tif or .pam name").into()),
     };
-    let mut r = PageRenderer::new(read(path)?, RenderConfig { password: flag(args, "--password").map(Arc::from), ..Default::default() });
+    let mut r = PageRenderer::new(
+        read(path)?,
+        RenderConfig { password: flag(args, "--password").map(Arc::from), reject_oversize: true, ..Default::default() },
+    );
     let p = r.render(RenderRequest { page: page_index, kind: RequestKind::Pixels, tile: None, scale: dpi / 72.0, tag: 0 });
     if let Some(e) = p.error {
         return Err(e.into());
@@ -408,11 +477,19 @@ fn render(args: &[String]) -> Result<(), CliError> {
     };
     std::fs::write(out, bytes).map_err(|e| format!("{out}: {e}"))?;
     let _ = writeln!(std::io::stderr().lock(), "rendered page {page} at {dpi} dpi: {}×{} px in {} ms", p.width, p.height, p.millis);
+    for warning in &p.warnings {
+        match warning {
+            pdfcraft_render::RenderWarning::ContentTruncated => {
+                let _ = writeln!(std::io::stderr().lock(), "warning: page {page}: content past the page's safety budget was skipped");
+            }
+        }
+    }
     Ok(())
 }
 
 /// Child-process body for `check`: prints one JSON line.
 fn check_one(args: &[String]) -> Result<(), CliError> {
+    validate_options("check-one", args, CHECK_ONE_OPTIONS)?;
     let path = *positional(args).first().ok_or("check-one: missing file")?;
     let dpi: f32 = flag(args, "--dpi").unwrap_or("36").parse().map_err(|_| "bad --dpi")?;
     let start = Instant::now();
@@ -493,6 +570,7 @@ fn collect(paths: &[&str]) -> Vec<PathBuf> {
 }
 
 fn check(args: &[String]) -> Result<(), CliError> {
+    validate_options("check", args, CHECK_OPTIONS)?;
     let files = collect(&positional(args));
     if files.is_empty() {
         return Err("check: no PDF files found".into());
@@ -597,6 +675,7 @@ fn print_output(auto: &pdfcraft_automation::Automation, content: Vec<pdfcraft_au
 }
 
 fn run(args: &[String]) -> Result<(), CliError> {
+    validate_options("run", args, RUN_OPTIONS)?;
     let mut auto = automation(args)?;
     if let Some(script) = flag(args, "--script") {
         let text = std::fs::read_to_string(script).map_err(|e| format!("{script}: {e}"))?;
@@ -624,6 +703,7 @@ fn run(args: &[String]) -> Result<(), CliError> {
 
 #[cfg(feature = "mcp")]
 fn mcp(args: &[String]) -> Result<(), CliError> {
+    validate_options("mcp", args, MCP_OPTIONS)?;
     let compact = args.iter().any(|a| a == "--compact");
     let mut server = pdfcraft_automation::mcp::McpServer::new(automation(args)?).with_compact(compact);
     let _ = writeln!(
@@ -639,6 +719,7 @@ fn mcp(args: &[String]) -> Result<(), CliError> {
 
 /// One request to a running app's control channel (`pdfkub --control FILE`).
 fn ui(args: &[String]) -> Result<(), CliError> {
+    validate_options("ui", args, UI_OPTIONS)?;
     use std::io::{BufRead, BufReader, Write as _};
     let file = flag(args, "--control").ok_or("ui: missing --control FILE (start the app with `pdfkub --control FILE`)")?;
     let info = read_control_file(file)?;
