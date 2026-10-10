@@ -2100,3 +2100,5 @@ action wizard	Start	Старт
 	The selected fields could not be found. Select them again.	Избраните полета не бяха намерени. Изберете ги отново.
 	The field {name} no longer exists.	Полето {name} вече не съществува.
 	A selected field has no widget on any page, so the fields can't be edited together.	Едно от избраните полета няма елемент на нито една страница, затова полетата не могат да се редактират заедно.
+	Next tab	Следващ раздел
+	Previous tab	Предишен раздел

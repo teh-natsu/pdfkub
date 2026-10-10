@@ -2136,3 +2136,5 @@ action wizard	Start	Indítás
 	The selected fields could not be found. Select them again.	A kijelölt mezők nem találhatók. Jelöld ki őket újra.
 	The field {name} no longer exists.	A(z) {name} mező már nem létezik.
 	A selected field has no widget on any page, so the fields can't be edited together.	Az egyik kijelölt mezőnek egyik oldalon sincs widgetje, ezért a mezők nem szerkeszthetők együtt.
+	Next tab	Következő lap
+	Previous tab	Előző lap

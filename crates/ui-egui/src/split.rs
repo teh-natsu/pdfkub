@@ -54,7 +54,7 @@ pub struct SplitState {
     /// The tab each side shows, by [`DocView::uid`].
     shown: [Option<u64>; 2],
     /// A tab being dragged to the other side, by [`DocView::uid`].
-    dragging: Option<u64>,
+    pub(crate) dragging: Option<u64>,
 }
 
 impl Default for SplitState {
@@ -214,6 +214,31 @@ impl PdfKubApp {
         };
     }
 
+    /// Move tab `from` to position `to` in the tab order (dragging a tab along its row); the
+    /// active tab stays active.
+    pub fn move_view(&mut self, from: usize, to: usize) {
+        if from >= self.views.len() || to >= self.views.len() || from == to {
+            return;
+        }
+        let active = self.active.and_then(|a| self.views.get(a)).map(|v| v.uid);
+        let v = self.views.remove(from);
+        self.views.insert(to, v);
+        self.active = active.and_then(|uid| self.views.iter().position(|v| v.uid == uid)).or(self.active);
+    }
+
+    /// View ▸ Next tab / Previous tab (Ctrl+Tab, Ctrl+Shift+Tab): the next tab in the order, on
+    /// the side with focus when the view is split, wrapping around.
+    pub fn cycle_tab(&mut self, forward: bool) {
+        let Some(a) = self.active.filter(|&a| a < self.views.len()) else { return };
+        let pane = self.pane_of(a);
+        let split = self.is_split();
+        let tabs: Vec<usize> = (0..self.views.len()).filter(|&i| !split || self.pane_of(i) == pane).collect();
+        let Some(at) = tabs.iter().position(|&i| i == a) else { return };
+        let n = tabs.len();
+        let next = if forward { (at + 1) % n } else { (at + n - 1) % n };
+        self.active = tabs.get(next).copied();
+    }
+
     /// Another tab shows the same document as tab `index`.
     pub(crate) fn has_twin(&self, index: usize) -> bool {
         let Some(id) = self.views.get(index).map(|v| v.id) else { return false };
@@ -304,6 +329,27 @@ pub fn show(app: &mut PdfKubApp, ui: &mut egui::Ui) {
     }
 }
 
+/// A tab dragged along a row of tabs (`tabs`: each tab's index and rect, in order) takes the
+/// place of the tab whose middle it passes. Call after drawing the row.
+pub(crate) fn reorder_tabs(app: &mut PdfKubApp, ui: &egui::Ui, tabs: &[(usize, Rect)]) {
+    let Some(uid) = app.split.dragging else { return };
+    let Some(from) = app.views.iter().position(|v| v.uid == uid) else { return };
+    if !tabs.iter().any(|(i, _)| *i == from) {
+        return;
+    }
+    ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
+    let Some(p) = ui.input(|i| i.pointer.interact_pos()) else { return };
+    let past = tabs.iter().find(|(i, r)| {
+        *i != from
+            && (r.top() - 12.0..=r.bottom() + 12.0).contains(&p.y)
+            && r.x_range().contains(p.x)
+            && ((*i > from && p.x > r.center().x) || (*i < from && p.x < r.center().x))
+    });
+    if let Some(&(to, _)) = past {
+        app.move_view(from, to);
+    }
+}
+
 /// A side's row of tabs, with the button that closes the split view on the right side's row.
 fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t: &Tokens) {
     let (row, _) = ui.allocate_exact_size(vec2(ui.available_width(), TAB_ROW), Sense::hover());
@@ -321,6 +367,7 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
     let mut close = None;
     let mut clicked = None;
     let mut move_side = None;
+    let mut rects = Vec::new();
     let buttons = if pane == Pane::Right { 34.0 } else { 0.0 };
     inner.scope(|ui| {
         ui.style_mut().always_scroll_the_only_direction = true;
@@ -348,6 +395,7 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
                         if resp.drag_started() {
                             app.split.dragging = Some(uid);
                         }
+                        rects.push((i, resp.rect));
                         if resp.clicked() {
                             clicked = Some(i);
                         }
@@ -365,6 +413,7 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
                 });
             });
     });
+    reorder_tabs(app, &inner, &rects);
     if pane == Pane::Right {
         inner.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if icons::button(ui, "columns-2", 26.0, true, tl!("Close split view")).clicked() {

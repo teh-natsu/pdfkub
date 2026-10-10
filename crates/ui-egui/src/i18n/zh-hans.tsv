@@ -2094,3 +2094,5 @@
 	The selected fields could not be found. Select them again.	找不到所选字段。请重新选择。
 	The field {name} no longer exists.	字段 {name} 已不存在。
 	A selected field has no widget on any page, so the fields can't be edited together.	某个所选字段在任何页面上都没有控件，因此无法一起编辑这些字段。
+	Next tab	下一个标签页
+	Previous tab	上一个标签页

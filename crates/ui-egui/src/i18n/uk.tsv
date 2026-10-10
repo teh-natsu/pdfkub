@@ -2161,3 +2161,5 @@ certificate	Subject	Власник сертифіката
 	The selected fields could not be found. Select them again.	Вибрані поля не знайдено. Виберіть їх знову.
 	The field {name} no longer exists.	Поле {name} більше не існує.
 	A selected field has no widget on any page, so the fields can't be edited together.	Одне з вибраних полів не має віджета на жодній сторінці, тому поля не можна редагувати разом.
+	Next tab	Наступна вкладка
+	Previous tab	Попередня вкладка

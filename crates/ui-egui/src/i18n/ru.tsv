@@ -2043,3 +2043,5 @@
 	The selected fields could not be found. Select them again.	Выбранные поля не найдены. Выберите их снова.
 	The field {name} no longer exists.	Поле {name} больше не существует.
 	A selected field has no widget on any page, so the fields can't be edited together.	У одного из выбранных полей нет виджета ни на одной странице, поэтому поля нельзя изменить вместе.
+	Next tab	Следующая вкладка
+	Previous tab	Предыдущая вкладка

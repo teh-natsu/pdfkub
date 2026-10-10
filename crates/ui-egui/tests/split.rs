@@ -213,3 +213,74 @@ fn two_documents_side_by_side_both_render() {
     assert!(app.views[left].page_screen_rect(0).is_some() && app.views[right].page_screen_rect(0).is_some());
     assert!(!app.render_pending(), "every view in sight has its pages, hidden ones ask for none");
 }
+
+/// Drag a tab by the pointer from its middle to just past the middle of `onto`.
+fn drag_tab(h: &mut Harness<'static, PdfKubApp>, name: &str, onto: &str) {
+    use egui_kittest::kittest::Queryable;
+    let from = h.get_by_label(name).rect().center();
+    let to = h.get_by_label(onto).rect();
+    let past = egui::pos2(if to.center().x > from.x { to.right() - 6.0 } else { to.left() + 6.0 }, to.center().y);
+    h.hover_at(from);
+    h.run_steps(1);
+    h.drag_at(from);
+    h.run_steps(1);
+    for k in 1..=6 {
+        h.hover_at(from + (past - from) * (k as f32 / 6.0));
+        h.run_steps(1);
+    }
+    h.drop_at(past);
+    h.run_steps(2);
+}
+
+fn order(app: &PdfKubApp) -> Vec<String> {
+    (0..app.views.len()).map(|i| name_of(app, i)).collect()
+}
+
+#[test]
+fn dragging_a_tab_along_the_title_bar_reorders_the_tabs() {
+    let mut h = harness(&[("a.pdf", 2), ("b.pdf", 2), ("c.pdf", 2)]);
+    assert_eq!(order(h.state()), ["a.pdf", "b.pdf", "c.pdf"]);
+    drag_tab(&mut h, "a.pdf", "c.pdf");
+    assert_eq!(order(h.state()), ["b.pdf", "c.pdf", "a.pdf"]);
+    // The active tab stays the same document.
+    assert_eq!(h.state().active.map(|i| name_of(h.state(), i)).as_deref(), Some("c.pdf"));
+}
+
+#[test]
+fn dragging_a_tab_along_a_sides_row_reorders_it_there() {
+    let mut h = harness(&[("a.pdf", 2), ("b.pdf", 2), ("c.pdf", 2), ("d.pdf", 2)]);
+    let d = (0..4).find(|&i| name_of(h.state(), i) == "d.pdf").unwrap();
+    h.state_mut().move_to_other_side(d);
+    settle(&mut h);
+    drag_tab(&mut h, "c.pdf", "a.pdf");
+    let app = h.state();
+    let left: Vec<String> =
+        (0..app.views.len()).filter(|&i| app.pane_of(i) == pdfcraft_ui_egui::split::Pane::Left).map(|i| name_of(app, i)).collect();
+    assert_eq!(left, ["c.pdf", "a.pdf", "b.pdf"]);
+    assert!(app.is_split(), "a drag within a side doesn't move the tab across");
+}
+
+#[test]
+fn ctrl_tab_cycles_tabs_on_the_side_with_focus() {
+    let mut h = harness(&[("a.pdf", 2), ("b.pdf", 2), ("c.pdf", 2)]);
+    let active = |h: &Harness<'static, PdfKubApp>| h.state().active.map(|i| name_of(h.state(), i)).unwrap();
+    assert_eq!(active(&h), "c.pdf");
+    h.key_press_modifiers(egui::Modifiers::CTRL, egui::Key::Tab);
+    h.run_steps(1);
+    assert_eq!(active(&h), "a.pdf", "wraps around");
+    h.key_press_modifiers(egui::Modifiers::CTRL | egui::Modifiers::SHIFT, egui::Key::Tab);
+    h.run_steps(1);
+    assert_eq!(active(&h), "c.pdf");
+    // Split: only the focused side's tabs.
+    let c = (0..3).find(|&i| name_of(h.state(), i) == "c.pdf").unwrap();
+    h.state_mut().move_to_other_side(c);
+    h.run_steps(2);
+    let a = (0..3).find(|&i| name_of(h.state(), i) == "a.pdf").unwrap();
+    h.state_mut().active = Some(a);
+    h.run_steps(1);
+    for expected in ["b.pdf", "a.pdf"] {
+        h.key_press_modifiers(egui::Modifiers::CTRL, egui::Key::Tab);
+        h.run_steps(1);
+        assert_eq!(active(&h), expected);
+    }
+}

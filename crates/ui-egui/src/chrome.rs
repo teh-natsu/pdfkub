@@ -68,6 +68,7 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                     changed
                 });
                 let mut close = None;
+                let mut rects = Vec::new();
                 ui.scope(|ui| {
                     ui.style_mut().always_scroll_the_only_direction = true;
                     let mut area = egui::ScrollArea::horizontal().id_salt("document_tabs").max_width(tabs_width).auto_shrink([true, true]);
@@ -84,13 +85,23 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                                 let (name, dirty) = (doc.display_name(), doc.dirty);
                                 // A tab showing the document's title names its file on hover.
                                 let file = (name != doc.name).then_some(doc.name.as_str());
-                                let response = tab(ui, &t, "file-text", &name, file, dirty, app.active == Some(i), &mut close, i, cap);
+                                // PdfKub: dragged along the strip, a tab changes places (split.rs).
+                                let response =
+                                    tab(ui, &t, "file-text", &name, file, dirty, app.active == Some(i), &mut close, i, cap).interact(Sense::drag());
+                                if response.drag_started() {
+                                    app.split.dragging = Some(app.views[i].uid);
+                                }
+                                rects.push((i, response.rect));
                                 if changed && app.active == Some(i) && !app.combine_showing() {
                                     response.scroll_to_me(Some(Align::Center));
                                 }
                                 if response.clicked() {
                                     app.active = Some(i);
                                 }
+                            }
+                            crate::split::reorder_tabs(app, ui, &rects);
+                            if !split && ui.input(|i| !i.pointer.any_down()) {
+                                app.split.dragging = None;
                             }
                             if let Some(i) = close {
                                 app.request_close_tab(i);

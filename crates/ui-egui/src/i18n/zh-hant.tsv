@@ -2016,3 +2016,5 @@
 	The selected fields could not be found. Select them again.	找不到所選欄位。請重新選取。
 	The field {name} no longer exists.	欄位 {name} 已不存在。
 	A selected field has no widget on any page, so the fields can't be edited together.	某個所選欄位在任何頁面上都沒有控制項，因此無法一起編輯這些欄位。
+	Next tab	下一個分頁
+	Previous tab	上一個分頁
