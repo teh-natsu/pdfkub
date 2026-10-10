@@ -80,7 +80,7 @@ jobs:
           if (-not (Select-String -Path per-user.log -SimpleMatch 'PdfKub must be installed for all users.')) {
             Get-Content per-user.log -Tail 60; throw 'per-user install did not fail on the scope guard'
           }
-          $p = Start-Process msiexec.exe -ArgumentList '/i', "`"$msi`"", '/qn', '/l*v', 'install.log' -Wait -PassThru
+          $p = Start-Process msiexec.exe -ArgumentList '/i', "`"$msi`"", '/qn', 'INSTALLCLI=1', '/l*v', 'install.log' -Wait -PassThru
           if ($p.ExitCode -ne 0) { Get-Content install.log -Tail 60; throw "msiexec /i exited $($p.ExitCode)" }
           $shortcuts = @(
             (Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'PdfKub.lnk'),
@@ -139,6 +139,8 @@ jobs:
           if ($p.ExitCode -ne 0) { Get-Content install-nodesktop.log -Tail 60; throw "msiexec /i INSTALLDESKTOPSHORTCUT=0 exited $($p.ExitCode)" }
           if (-not (Test-Path -LiteralPath $shortcuts[0])) { throw "INSTALLDESKTOPSHORTCUT=0 also skipped $($shortcuts[0])" }
           if (Test-Path -LiteralPath $shortcuts[1]) { throw "INSTALLDESKTOPSHORTCUT=0 still created $($shortcuts[1])" }
+          # The command-line tools are opt-in (INSTALLCLI=1): a default install leaves them out.
+          if (Test-Path (Join-Path $dir 'pdfkub-cli.exe')) { throw 'a default install also installed pdfkub-cli.exe' }
           $p = Start-Process msiexec.exe -ArgumentList '/x', "`"$msi`"", '/qn' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "msiexec /x exited $($p.ExitCode)" }
           if (Test-Path -LiteralPath $shortcuts[0]) { throw "uninstall left $($shortcuts[0]) behind" }

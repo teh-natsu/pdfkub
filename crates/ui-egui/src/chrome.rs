@@ -28,8 +28,9 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                     app.active = None;
                     app.combine_tab.focused = false;
                 }
-                // Keep the two 28-point buttons, Discord's text/padding and three gaps outside the scrolling tabs.
-                let controls_width = ui.fonts_mut(|f| f.layout_no_wrap("Discord".into(), theme::medium(13.0), t.text).size().x) + 138.0;
+                // Keep the buttons on the right outside the scrolling tabs: Display theme, Keyboard
+                // shortcuts and Split right (28 points each), their gaps and a little room.
+                let controls_width = 3.0 * 28.0 + 3.0 * 4.0 + 12.0;
                 // Split view: each side shows its own tabs (split.rs); these return with Home.
                 let split = app.is_split() && app.active.is_some();
                 // Open stays in sight after the tabs: its icon, text and padding, and the gaps around it.

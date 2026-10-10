@@ -156,15 +156,18 @@ impl Automation {
     pub(crate) fn ocr_recognize_files(&mut self, a: &Args) -> Result<Value> {
         let settings = self.ocr_settings(a)?;
         let folder = self.resolve(a.str("folder")?, true)?;
+        // Every path must be inside the root before anything is read or created: one that leaves
+        // it refuses the whole call. (A missing file is still reported for that file alone.)
+        let paths = a.strs("paths")?;
+        let sources = paths.iter().map(|p| self.resolve(p, true)).collect::<Result<Vec<_>>>()?;
         std::fs::create_dir_all(&folder).map_err(|e| failed(e.to_string()))?;
         let ocr = pdfcraft_engine::ocr::engine().map_err(failed)?;
         let mut out = Vec::new();
-        for p in a.strs("paths")? {
+        for (p, src) in paths.into_iter().zip(sources) {
             let name = std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "document.pdf".into());
-            let result =
-                self.resolve(p, false).map_err(|e| e.to_string()).and_then(|src| std::fs::read(&src).map_err(|e| e.to_string())).and_then(|bytes| {
-                    pdfcraft_engine::ocr::recognize_file(&name, std::sync::Arc::new(bytes), None, settings.clone(), &ocr, |_, _| true)
-                });
+            let result = std::fs::read(&src)
+                .map_err(|e| format!("{p}: {e}"))
+                .and_then(|bytes| pdfcraft_engine::ocr::recognize_file(&name, std::sync::Arc::new(bytes), None, settings.clone(), &ocr, |_, _| true));
             out.push(match result {
                 Ok(r) => {
                     let target = child(&folder, &name);

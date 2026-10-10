@@ -181,3 +181,35 @@ fn clicking_a_tab_on_a_side_shows_it() {
     assert_eq!(h.state().shown_in(Pane::Left), Some(other));
     assert_eq!(h.state().shown_in(Pane::Right).map(|i| name_of(h.state(), i)).as_deref(), Some("c.pdf"));
 }
+
+/// One document on both sides at different zooms shares one render pool: each side asks for and
+/// gets its own rasters, and neither keeps replacing the other's queue.
+#[test]
+fn one_document_on_both_sides_renders_each_side_at_its_own_zoom() {
+    let mut h = harness(&[("a.pdf", 3)]);
+    h.state_mut().execute("view.split_right");
+    settle(&mut h);
+    let right = h.state().active.unwrap();
+    h.state_mut().views[right].set_zoom(2.0);
+    settle(&mut h);
+    let app = h.state();
+    let left = app.shown_in(pdfcraft_ui_egui::split::Pane::Left).unwrap();
+    assert!((app.views[left].zoom - app.views[right].zoom).abs() > 0.1, "the sides keep their own zoom");
+    assert!(!app.views[left].render_pending() && !app.views[right].render_pending());
+    assert!(app.views[left].page_screen_rect(0).is_some() && app.views[right].page_screen_rect(0).is_some());
+}
+
+/// Two documents, one on each side: both stay rendered, and the tab hidden behind another on a
+/// side gives up its rasters (only the documents in view keep textures).
+#[test]
+fn two_documents_side_by_side_both_render() {
+    let mut h = harness(&[("a.pdf", 2), ("b.pdf", 2), ("c.pdf", 2)]);
+    h.state_mut().active = Some(1);
+    h.state_mut().execute("view.split_right");
+    settle(&mut h);
+    let app = h.state();
+    assert!(app.is_split());
+    let (left, right) = (app.shown_in(pdfcraft_ui_egui::split::Pane::Left).unwrap(), app.shown_in(pdfcraft_ui_egui::split::Pane::Right).unwrap());
+    assert!(app.views[left].page_screen_rect(0).is_some() && app.views[right].page_screen_rect(0).is_some());
+    assert!(!app.render_pending(), "every view in sight has its pages, hidden ones ask for none");
+}
