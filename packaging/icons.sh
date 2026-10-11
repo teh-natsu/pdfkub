@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Regenerate every app icon from assets/app-icon/pdfkub.svg (the master vector) and
 # pdfkub-small.svg (the variant for 24 px and below). Both SVGs come from packaging/make_icon.py.
+# The Windows PDF file icon comes from assets/app-icon/pdfkub-document.svg.
 #
 # Needs: resvg (brew install resvg / cargo install resvg) and python3 (stdlib for the .ico). The
 # .icns is written by iconutil on macOS, or by Pillow elsewhere. The outputs are committed, so
@@ -50,13 +51,16 @@ done
 mkdir -p "$DIR/hicolor/scalable/apps"
 cp "$SVG" "$DIR/hicolor/scalable/apps/$ID.svg"
 
-# Windows .ico: PNG-compressed entries, 16-256 px.
-ICO_PNGS=()
-for s in 16 20 24 32 40 48 64 128 256; do
-  render "$(pick "$s")" "$s" "$TMP/ico-$s.png"
-  ICO_PNGS+=("$TMP/ico-$s.png")
-done
-python3 - "$DIR/pdfkub.ico" "${ICO_PNGS[@]}" <<'PY'
+# Windows .ico: PNG-compressed entries, 16-256 px. The document icon has its own resource
+# in pdfkub.exe; the app icon remains the first/default icon.
+for name in pdfkub pdfkub-document; do
+  ICO_PNGS=()
+  for s in 16 20 24 32 40 48 64 128 256; do
+    if [ "$name" = pdfkub ]; then src="$(pick "$s")"; else src="$DIR/$name.svg"; fi
+    render "$src" "$s" "$TMP/$name-$s.png"
+    ICO_PNGS+=("$TMP/$name-$s.png")
+  done
+  python3 - "$DIR/$name.ico" "${ICO_PNGS[@]}" <<'PY'
 import struct, sys
 out, pngs = sys.argv[1], sys.argv[2:]
 blobs = [open(p, "rb").read() for p in pngs]
@@ -69,6 +73,7 @@ for b in blobs:
     offset += len(b)
 open(out, "wb").write(head + entries + data)
 PY
+done
 
 # macOS .icns.
 if command -v iconutil >/dev/null; then

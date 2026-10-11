@@ -1,5 +1,6 @@
 //! Windows only: embed the app icon and version info (VERSIONINFO) into `pdfkub.exe`, so it
-//! shows in Explorer, the taskbar, the Start menu and Alt-Tab.
+//! shows in Explorer, the taskbar, the Start menu and Alt-Tab. A separate PDF document icon
+//! uses resource ID 2; the installer references it as `pdfkub.exe,-2`.
 //!
 //! On every other target this does nothing. A missing resource compiler is a warning, so a
 //! cross-compile from macOS or Linux still links, unless `PDFKUB_REQUIRE_WINRES=1` turns it
@@ -11,6 +12,7 @@ mod windows_manifest;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=../../assets/app-icon/pdfkub.ico");
+    println!("cargo:rerun-if-changed=../../assets/app-icon/pdfkub-document.ico");
     println!("cargo:rerun-if-changed=src/windows_manifest.rs");
     println!("cargo:rerun-if-env-changed=PDFKUB_REQUIRE_WINRES");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
@@ -18,6 +20,7 @@ fn main() {
     }
     let mut res = winresource::WindowsResource::new();
     res.set_icon("../../assets/app-icon/pdfkub.ico")
+        .set_icon_with_id("../../assets/app-icon/pdfkub-document.ico", "2")
         .set_manifest(windows_manifest::WINDOWS_MANIFEST)
         .set("ProductName", "PdfKub")
         .set("FileDescription", "PdfKub PDF workbench")

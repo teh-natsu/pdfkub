@@ -90,10 +90,13 @@
              PdfKub entry to pick was the advertised Start Menu shortcut, which Windows can't
              run as a file handler ("This app can't run on your PC"). -->
         <RegistryValue Root="HKLM" Key="Software\Classes\PdfKub.Document" Value="PDF Document" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\PdfKub.Document\DefaultIcon" Value="[#PdfkubExe],0" Type="string" />
+        <!-- A negative index selects the stable icon resource ID, rather than its position.
+             Resource 1 is the app's red panda; resource 2 is the PDF document (build.rs). -->
+        <RegistryValue Root="HKLM" Key="Software\Classes\PdfKub.Document\DefaultIcon" Value="&quot;[#PdfkubExe]&quot;,-2" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\PdfKub.Document\shell\open\command" Value="&quot;[#PdfkubExe]&quot; &quot;%1&quot;" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\.pdf\OpenWithProgids" Name="PdfKub.Document" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\pdfkub.exe" Name="FriendlyAppName" Value="PdfKub" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\pdfkub.exe\DefaultIcon" Value="&quot;[#PdfkubExe]&quot;,-2" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\pdfkub.exe\SupportedTypes" Name=".pdf" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\pdfkub.exe\shell\open\command" Value="&quot;[#PdfkubExe]&quot; &quot;%1&quot;" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Capabilities" Name="ApplicationName" Value="PdfKub" Type="string" />
@@ -151,6 +154,19 @@
         <Shortcut Id="DesktopShortcut" Name="PdfKub" Description="PdfKub PDF workbench"
             Target="[#PdfkubExe]" WorkingDirectory="INSTALLFOLDER" Icon="PdfkubIcon.ico" IconIndex="0" />
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Shortcuts" Name="Desktop" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+      <!-- The embedded PDF icon's ISC notice and project licences travel with the binaries. -->
+      <Component Id="PdfkubDocumentIconLicense" Guid="61EC7517-0229-48D9-9A3F-ADEEA138759E">
+        <File Id="PdfkubDocumentIconLicenseFile" Source="$(var.BinDir)\LICENSE-document.txt" KeyPath="yes" />
+      </Component>
+      <Component Id="PdfkubMitLicense" Guid="49257914-9B4F-45BF-8749-127C703FB6D2">
+        <File Id="PdfkubMitLicenseFile" Source="$(var.BinDir)\LICENSE-MIT" KeyPath="yes" />
+      </Component>
+      <Component Id="PdfkubApacheLicense" Guid="0D434598-B54C-4184-B34C-1BC58F935A28">
+        <File Id="PdfkubApacheLicenseFile" Source="$(var.BinDir)\LICENSE-APACHE" KeyPath="yes" />
+      </Component>
+      <Component Id="PdfkubNotice" Guid="2E57F75E-922A-4320-AB2A-0AB1D60ADD5A">
+        <File Id="PdfkubNoticeFile" Source="$(var.BinDir)\NOTICE" KeyPath="yes" />
       </Component>
     </ComponentGroup>
     <Component Id="PdfkubCli" Directory="INSTALLFOLDER" Guid="5B0F7E2C-4C1D-4F6A-9E3B-2D8A7C6E1F40" Condition="INSTALLCLI = 1">

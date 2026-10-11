@@ -24,6 +24,11 @@ pub const RECOGNITION_MODEL: &str = "text-recognition.rten";
 pub const THAI_RECOGNITION_MODEL: &str = "thai-recognition.onnx";
 pub const THAI_RECOGNITION_CONFIG: &str = "thai-recognition.yml";
 
+/// The recognition model's alphabet, as it was trained (ocrs-models' `DEFAULT_ALPHABET`): its
+/// output classes follow this order. The ocrs crate's own copy has an `E` where the training had
+/// `€`, which made a scanned "€250" read as "E250".
+pub const ALPHABET: &str = " 0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~€ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
 /// The languages the models read (ISO 639-1). English is the Latin alphabet without accents;
 /// Thai also reads Latin letters and digits. Thai needs the Thai model files.
 pub const LANGUAGES: &[(&str, &str)] = &[("en", "English"), ("th", "ไทย (Thai)")];
@@ -123,6 +128,7 @@ impl Ocr {
         let params = ocrs::OcrEngineParams {
             detection_model: Some(load(&models.detection)?),
             recognition_model: Some(load(&models.recognition)?),
+            alphabet: Some(ALPHABET.into()),
             ..Default::default()
         };
         let engine = ocrs::OcrEngine::new(params).map_err(|e| OcrError::Load("ocr engine".into(), e.to_string()))?;
@@ -533,6 +539,15 @@ mod tests {
     }
 
     /// The message tells end users what to do; release builds have no cargo.
+    #[test]
+    fn the_alphabet_is_the_trained_one() {
+        let chars: Vec<char> = ALPHABET.chars().collect();
+        assert_eq!(chars.len(), 96);
+        // The euro sign follows the ASCII punctuation (class 44; 0 is the CTC blank), not a second E.
+        assert_eq!(chars.iter().position(|&c| c == '€'), Some(43));
+        assert_eq!(chars.iter().filter(|&&c| c == 'E').count(), 1);
+    }
+
     #[test]
     fn missing_models_message_is_for_end_users() {
         let message = OcrError::NoModels.to_string();

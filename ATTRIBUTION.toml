@@ -19,7 +19,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Simplified Chinese UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "5c4b7f3d6e5e6f3712016525b967e148f1a7168d57087ac4ff5dec427d50359e"
+sha256 = "1efbbbc7ae76ffd0f339ab5ebdabb4328cf31fdd44edfe419862b84727790819"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/zh-hant.tsv"
@@ -30,7 +30,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Traditional Chinese UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "8836a6822c66a391dda820a61e0d4227a88610fec331e9fa6234a3ca0430a5d7"
+sha256 = "1121495b970c628eb41aa5e726ca0299bfde1d53c6b89f0b1cd2109f31e61ed4"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/cs.tsv"
@@ -41,7 +41,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Czech UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "7584592b94e74d920867ce9f6190549fcc9a0853b6c5cbc548b887074b27c14c"
+sha256 = "d13072a9e0c5581bf65ed0a057461fbe281546103a5893663b46219acbc96229"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/pt-br.tsv"
@@ -52,7 +52,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Brazilian Portuguese UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "94dc0a41d4bce4eb8e3fe62a6dec630685aa2e744e217e754852ffab5a2c3744"
+sha256 = "9f452eae4582c68a8f6fd9bfd4a3b7e6f9287241b460a2dcb1e6438147d504db"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/es.tsv"
@@ -63,7 +63,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Spanish UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "a604e93152fa66f625c0b1da631481061d477edecda227f68909b9a1125d1434"
+sha256 = "3c7ed6b0ccbb06fd65375199ec1d789dc4312a6734652ba17ee3960cdc93f9eb"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/fr.tsv"
@@ -74,7 +74,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "French UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "344a29de45e27fecd98cf1c1866f1a5d9f7656e34af3b5a65021800b8e3101a4"
+sha256 = "17327f0f25b1ec74f08435270c9b5b7d92b5b0db520d4247b3e77ce00946bf1b"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/de.tsv"
@@ -85,7 +85,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "German UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "173fbe43cf940db1f67e328ef4955aeb0314b8e691b348d63a8ba1b69fa74cc7"
+sha256 = "c0c42df064cf594ba8421a1a7f4c427977abb335d363162676bfa2c396a2ccfe"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/te.tsv"
@@ -96,7 +96,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Telugu UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "66b39678ec197d12f7ecd607e1837e727d2082405bebc985d8c8d0b508627a11"
+sha256 = "7721c44ed174823bcff56ff077872a0ff810bcfa7cb1f8fce1e281f90ded3d92"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/it.tsv"
@@ -107,7 +107,18 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Italian UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "bc75ceb84cff64635336448d53bc54b6263c5664873af4a21f1992a5b778281b"
+sha256 = "28f08aa5d75e045067a43597558be540984962f2b20cbe4f39a283c21f73a5df"
+
+[[asset]]
+path = "crates/ui-egui/src/i18n/pl.tsv"
+title = "Polish interface translation catalog"
+author = "PdfCraft contributors"
+source = "Contributor-original: clean-room translations of PdfKub's English UI labels, no proprietary localisation resources"
+licence = "MIT OR Apache-2.0"
+licence_file = "LICENSE-MIT"
+kind = "translation"
+usage = "Polish UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
+sha256 = "f5d82400238d2cbd6ad4de2b6d1983c8e46e8c82f2c0caa6b1caad0bca7a3156"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/ru.tsv"
@@ -118,7 +129,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Russian UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "29d43c2316966948f2b2c000ea81235262ea08eb3ee7dd1203b100d17481440d"
+sha256 = "b0af197466920a72f0142e761c669c0e402d74b95856ba85d52bbf28a4779f3e"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/hu.tsv"
@@ -129,7 +140,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Hungarian UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "8500589307a67007aaf57ecd4f7059c3afadf75fa7d5dc190e2a82e2d7cfc084"
+sha256 = "fd2c69a42a8d94fde36b294a0451d25a28541fdb3cac0acb15de0b1fc2431465"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/bg.tsv"
@@ -140,7 +151,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Bulgarian UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "72c0e4862225990ee971642c2ecb0c6054c4ae40cd6c7d8c298d169259af3863"
+sha256 = "92d17a7fabfd90e6ec6c8cc8f8766375832b14e6f8c232bbef68033b18c2ab87"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/ja.tsv"
@@ -151,7 +162,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Japanese UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "c42605d9097567cbada7a31a1c4682cd45bab8713c039aa33194aa8a5d3d3264"
+sha256 = "2fa86aac0d7a96b0bf3c387da69952b869259d028823128e2777f672b740d4d7"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/uk.tsv"
@@ -162,7 +173,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Ukrainian UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "71410a1bee6b6262816ff640c231b5ea05eb6be706a777018c5a9c688001e536"
+sha256 = "97de5f023fe0a89cca89aea001e2e1cc8ba5edb60f42860d0bccb89854c3b2c4"
 
 [[asset]]
 path = "crates/ui-egui/src/i18n/ar.tsv"
@@ -173,7 +184,7 @@ licence = "MIT OR Apache-2.0"
 licence_file = "LICENSE-MIT"
 kind = "translation"
 usage = "Arabic UI strings, compiled in by crates/ui-egui/src/i18n/mod.rs"
-sha256 = "e920a010970c54deed727844d31c67773345bc157b6efccdaa529ba15f446d01"
+sha256 = "b2ae4bbb047451dc7641633573d096f655e0b92033ca9ba83e0e01b3c964f4d0"
 
 [[asset]]
 path = "assets/icons/accessibility.svg"
@@ -1395,6 +1406,17 @@ licence_file = "assets/icons/LICENSE-lucide.txt"
 kind = "icon"
 usage = "UI icon, embedded via crates/ui-egui/src/icon_data.rs"
 sha256 = "fe917d6144a9aed9a5297cb28addb9e582ac591a8f1c498a55aecea9b5c1783e"
+
+[[asset]]
+path = "assets/icons/minimize-2.svg"
+title = "Lucide icon \"minimize-2\""
+author = "Lucide Contributors (portions Cole Bemis, Feather)"
+source = "https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/minimize-2.svg)"
+licence = "ISC"
+licence_file = "assets/icons/LICENSE-lucide.txt"
+kind = "icon"
+usage = "UI icon, embedded via crates/ui-egui/src/icon_data.rs"
+sha256 = "1150437d5a870321c59b7ebca2e1bc3f6227f0fa03dd10484ab384dfe5110739"
 
 [[asset]]
 path = "assets/icons/minus.svg"
@@ -2785,6 +2807,28 @@ licence_file = "assets/app-icon/LICENSE.txt"
 kind = "icon"
 usage = "Embedded in pdfkub.exe by apps/pdfkub/build.rs (Explorer, taskbar, Start menu, Alt-Tab)"
 sha256 = "9432a678b407938d6d173f1268000c2e8c5eb3b6363e8524736cdfb12f5964c4"
+
+[[asset]]
+path = "assets/app-icon/pdfkub-document.svg"
+title = "PdfKub PDF document icon (master vector)"
+author = "Lucide Icons and Contributors (document outline); PdfCraft contributors (PDF badge, lettering and composition)"
+source = "https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/file-text.svg); contributor-original composition (assets/app-icon/README.md)"
+licence = "ISC AND (MIT OR Apache-2.0)"
+licence_file = "assets/app-icon/LICENSE-document.txt"
+kind = "icon"
+usage = "Master artwork for the Windows PDF file type icon; rendered by packaging/icons.sh, without fonts or external images"
+sha256 = "8da8278c2b89362be0a960879d453ff879d7544d6d58e47d5389574e8dfff77b"
+
+[[asset]]
+path = "assets/app-icon/pdfkub-document.ico"
+title = "PdfKub PDF document icon (Windows .ico, 16-256 px)"
+author = "Lucide Icons and Contributors (document outline); PdfCraft contributors (PDF badge, lettering and composition)"
+source = "https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/file-text.svg); contributor-original composition (assets/app-icon/README.md)"
+licence = "ISC AND (MIT OR Apache-2.0)"
+licence_file = "assets/app-icon/LICENSE-document.txt"
+kind = "icon"
+usage = "Embedded in pdfkub.exe as resource 2; the Windows installer uses it for PdfKub.Document and Applications/pdfkub.exe PDF file associations"
+sha256 = "ba3f9128b368fc6d17d376cf62dbdbc22455451c5c8c4779210d7a2a7409b9e6"
 
 [[asset]]
 path = "assets/app-icon/hicolor/16x16/apps/io.github.teh_natsu.pdfkub.png"

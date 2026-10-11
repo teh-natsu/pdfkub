@@ -39,12 +39,20 @@ fonts or third-party artwork. Licence: [LICENSE.txt](LICENSE.txt) (`MIT OR Apach
 | `pdfkub-1024.png` | 1024 px on Apple's grid; also the runtime Dock icon on macOS |
 | `pdfkub.icns` | macOS icon (16–1024 px) |
 | `pdfkub.ico` | Windows icon (16–256 px), embedded in `pdfkub.exe` by `apps/pdfkub/build.rs` |
+| `pdfkub-document.svg` | Windows PDF file icon master: a Lucide document outline, green badge and outlined PDF lettering; no font dependency |
+| `pdfkub-document.ico` | Windows PDF file icon (16–256 px), embedded as resource 2 in `pdfkub.exe` |
 | `hicolor/<n>x<n>/apps/io.github.teh_natsu.pdfkub.png` | Linux hicolor theme, 16–512 px; the 256 px one is the runtime icon on Windows and Linux |
 | `hicolor/scalable/apps/io.github.teh_natsu.pdfkub.svg` | Linux scalable icon (copy of the master) |
 
 Where it shows: `apps/pdfkub/src/main.rs` sets the window icon (Dock, taskbar, Alt-Tab, launcher) and the
 Wayland app id `io.github.teh_natsu.pdfkub`; `packaging/linux/io.github.teh_natsu.pdfkub.desktop` names the
 hicolor icon; the About dialog and home screen show `pdfkub.svg`.
+
+Windows PDF files use resource 2 (`"pdfcraft.exe",-2`) when PdfCraft is chosen as the default
+reader; the app keeps resource 1. The document outline is adapted from Lucide `file-text`
+1.49.0 (ISC); its badge and outlined lettering are original (`MIT OR Apache-2.0`), covered by
+[LICENSE-document.txt](LICENSE-document.txt). Both icons are embedded, requiring no runtime
+sidecar. This provides a file type icon; first-page thumbnails still need a thumbnail provider.
 
 ## Regenerate
 

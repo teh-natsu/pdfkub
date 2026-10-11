@@ -390,8 +390,20 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
                         // Clicked to show it; dragged onto the other side to move it there.
                         // A tab showing the document's title names its file on hover.
                         let file = (name != doc.name).then_some(doc.name.as_str());
-                        let resp =
-                            crate::chrome::tab(ui, t, "file-text", &name, file, dirty, shown == Some(i), &mut close, i, None).interact(Sense::drag());
+                        let resp = crate::chrome::tab(
+                            ui,
+                            ui.id().with(("split-tab", uid)),
+                            t,
+                            "file-text",
+                            &name,
+                            file,
+                            dirty,
+                            shown == Some(i),
+                            &mut close,
+                            i,
+                            None,
+                        )
+                        .interact(Sense::drag());
                         if resp.drag_started() {
                             app.split.dragging = Some(uid);
                         }
