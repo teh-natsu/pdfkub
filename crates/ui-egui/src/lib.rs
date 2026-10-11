@@ -90,7 +90,7 @@ pub mod prepare;
 mod print_ui;
 mod signature_drag;
 pub mod split;
-pub use print_ui::{Handling as PrintHandling, PrintDraft, Which as PrintWhich};
+pub use print_ui::{Handling as PrintHandling, PrintDraft, PrinterSource, Which as PrintWhich, system_printers};
 mod redact_ui;
 pub use redact_ui::{HiddenDraft, PagesDraft as RedactPagesDraft, RedactPrefs, SearchDraft as RedactSearchDraft, SearchMode as RedactSearchMode};
 pub mod i18n;
@@ -436,6 +436,12 @@ pub struct PdfKubApp {
     /// How to ask for the latest release (the desktop app sets it; see `updates`).
     pub update_source: Option<updates::UpdateSource>,
     pub(crate) updates: updates::Updates,
+    /// Lists the Print dialog's printers in the background (the desktop app sets it; see
+    /// [`PrinterSource`]).
+    pub printer_source: Option<PrinterSource>,
+    // A browser has no background print work: the type is empty there.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    pub(crate) print_tasks: print_ui::PrintTasks,
     pub palette_open: bool,
     pub palette_query: String,
     pub all_tools_expanded: bool,
@@ -737,6 +743,8 @@ impl PdfKubApp {
             dialog: None,
             update_source: None,
             updates: updates::Updates::default(),
+            printer_source: None,
+            print_tasks: print_ui::PrintTasks::default(),
             palette_open: false,
             palette_query: String::new(),
             all_tools_expanded: false,
@@ -2018,6 +2026,7 @@ impl eframe::App for PdfKubApp {
             }
         }
         self.poll_updates();
+        self.poll_print();
         // Shortcuts deferred last frame: the text field has taken that frame's typing since.
         let deferred = std::mem::take(&mut self.deferred_commands);
         self.shortcuts(ctx);
