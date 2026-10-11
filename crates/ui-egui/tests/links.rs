@@ -78,3 +78,16 @@ fn about_dialog_has_no_contributors_or_models_tab() {
         assert_eq!(h.query_all_by_label(gone).count(), 0, "{gone}");
     }
 }
+
+/// The About dialog fits its few lines: Close sits just under the credit, even right after a
+/// tall dialog (Keyboard shortcuts) used the same modal. A button row centred in the remaining
+/// height kept the modal at the earlier dialog's size, with Close floating halfway down.
+#[test]
+fn about_dialog_is_sized_to_its_content() {
+    let mut h = harness(|app| app.dialog = Some(Dialog::Shortcuts));
+    h.run_steps(4);
+    h.state_mut().dialog = Some(Dialog::About);
+    let credit = settled(&mut h, "Based on PdfCraft by the ArtCraft team.").rect();
+    let close = settled(&mut h, "Close").rect();
+    assert!(close.top() - credit.bottom() < 60.0, "Close {close:?} far below the credit {credit:?}");
+}

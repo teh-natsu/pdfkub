@@ -1092,7 +1092,7 @@ pub fn show(app: &mut PdfKubApp, ctx: &egui::Context) {
                 ui.add_space(6.0);
                 ui.label(
                     egui::RichText::new(
-                        "Rendering: hayro (bootstrap) · UI: egui · Icons: Lucide (ISC) · Fonts: Inter, Anuphan, JetBrains Mono, Dancing Script (OFL)",
+                        "Rendering: hayro (bootstrap) · UI: egui · Icons: Lucide (ISC) · Fonts: Inter, Anuphan, Sarabun, Sriracha, JetBrains Mono, Dancing Script (OFL)",
                     )
                     .color(t.text_muted)
                     .small(),
@@ -1103,7 +1103,10 @@ pub fn show(app: &mut PdfKubApp, ctx: &egui::Context) {
         }
         ui.add_space(12.0);
         let changed = draft_changes(app).is_some_and(|c| !c.is_empty());
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+        // One row tall: centred in all the remaining height, the buttons kept the shared modal at
+        // the size of the tallest dialog shown before (PdfKub: a short About with Close halfway
+        // down).
+        ui.allocate_ui_with_layout(egui::vec2(ui.available_width(), 32.0), Layout::right_to_left(Align::Center), |ui| {
             if dialog == Dialog::Recovery {
                 if widgets::pill_button(ui, tl!("Recover"), true).clicked() {
                     recover = Some(true);
