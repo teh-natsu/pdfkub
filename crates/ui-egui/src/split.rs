@@ -367,6 +367,7 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
     let mut close = None;
     let mut clicked = None;
     let mut move_side = None;
+    let mut tab_act = None;
     let mut rects = Vec::new();
     let buttons = if pane == Pane::Right { 34.0 } else { 0.0 };
     inner.scope(|ui| {
@@ -412,13 +413,26 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
                         if resp.clicked() {
                             clicked = Some(i);
                         }
+                        // The title bar's tab menu (upstream's), with Move to the other side. Close goes
+                        // by position: the document may be open on both sides.
+                        let (id, reveal) = (app.views[i].id, cfg!(not(target_arch = "wasm32")) && doc.path.is_some());
                         resp.context_menu(|ui| {
-                            if ui.button(tl!("Move to the other side")).clicked() {
-                                move_side = Some(i);
+                            if ui.button(tl!("Close Tab")).clicked() {
+                                close = Some(i);
                                 ui.close();
                             }
-                            if ui.button(tl!("Close")).clicked() {
-                                close = Some(i);
+                            if ui.add_enabled(!app.closed_tabs.is_empty(), egui::Button::new(tl!("Reopen Closed Tab"))).clicked() {
+                                tab_act = Some(crate::tab_context::Action::Reopen);
+                                ui.close();
+                            }
+                            let label = if cfg!(target_os = "macos") { tl!("Reveal in Finder") } else { tl!("Reveal in File Explorer") };
+                            if ui.add_enabled(reveal, egui::Button::new(label)).clicked() {
+                                tab_act = Some(crate::tab_context::Action::Reveal(id));
+                                ui.close();
+                            }
+                            ui.separator();
+                            if ui.button(tl!("Move to the other side")).clicked() {
+                                move_side = Some(i);
                                 ui.close();
                             }
                         });
@@ -441,5 +455,7 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
         app.move_to_other_side(i);
     } else if let Some(i) = close {
         app.request_close_tab(i);
+    } else if let Some(action) = tab_act {
+        app.tab_action(action);
     }
 }

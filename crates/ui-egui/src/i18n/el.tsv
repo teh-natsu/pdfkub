@@ -1058,7 +1058,7 @@
 	Couldn't optimize the file: {e}	Δεν ήταν δυνατή η βελτιστοποίηση του αρχείου: {e}
 	Couldn't write {path}: {e}	Δεν ήταν δυνατή η εγγραφή στο {path}: {e}
 	The form asks to be submitted to {u}; PdfKub doesn't send form data. Save the document to keep your entries.	Η φόρμα ζητά υποβολή στο {u}, αλλά το PdfKub δεν αποστέλλει δεδομένα φόρμας. Αποθηκεύστε το έγγραφο για να διατηρήσετε τις καταχωρίσεις σας.
-	{s} actions run in the JavaScript engine (M6)	{s} ενέργειες εκτελούνται στη μηχανή JavaScript (M6)
+	This PDF uses the unsupported {s} action.	Αυτό το PDF χρησιμοποιεί τη μη υποστηριζόμενη ενέργεια {s}.
 	{name}: the {other} action isn't supported yet	{name}: η ενέργεια {other} δεν υποστηρίζεται ακόμη
 	{name} submits the form to {url}; PdfKub doesn't send form data. Save the document to keep your entries.	Το {name} υποβάλλει τη φόρμα στο {url}, αλλά το PdfKub δεν αποστέλλει δεδομένα φόρμας. Αποθηκεύστε το έγγραφο για να διατηρήσετε τις καταχωρίσεις σας.
 	Export stopped: {e}	Η εξαγωγή διακόπηκε: {e}
@@ -2216,13 +2216,13 @@ comment menu	Edit	Επεξεργασία
 	Offset from centre	Μετατόπιση από το κέντρο
 	Graphic	Γραφικό
 	Signer's name	Όνομα υπογράφοντος
-	Fill & Sign signature	Υπογραφή από τη Συμπλήρωση και υπογραφή
+	Fill & Sign signature	Υπογραφή από το εργαλείο «Συμπλήρωση και υπογραφή»
 	Choose image…	Επιλογή εικόνας…
 	Looking for printers…	Αναζήτηση εκτυπωτών…
 	Sending to {printer}…	Αποστολή στον {printer}…
 	Enter permissions password…	Εισαγωγή κωδικού δικαιωμάτων…
 	Permissions password	Κωδικός δικαιωμάτων
-	“{name}” has security restrictions. Enter its permissions password to lift them.	Το «{name}» έχει περιορισμούς ασφαλείας. Εισαγάγετε τον κωδικό δικαιωμάτων για να τους αρθούν.
+	“{name}” has security restrictions. Enter its permissions password to lift them.	Το «{name}» έχει περιορισμούς ασφαλείας. Εισαγάγετε τον κωδικό δικαιωμάτων για να αρθούν οι περιορισμοί.
 	Restrictions lifted	Οι περιορισμοί άρθηκαν
 	Couldn't unlock {name}: {e}	Δεν ήταν δυνατό το ξεκλείδωμα του {name}: {e}
 	This document has no restrictions to lift	Αυτό το έγγραφο δεν έχει περιορισμούς προς άρση
@@ -2232,7 +2232,7 @@ comment menu	Edit	Επεξεργασία
 	These files can't be read, so they won't be in the combined PDF:	Αυτά τα αρχεία δεν διαβάζονται, οπότε δεν θα συμπεριληφθούν στο συνδυασμένο PDF:
 	Combine the rest	Συνδυασμός των υπολοίπων
 	and {n} more	και {n} ακόμη
-	Drop PDFs, images, text files or folders here, or choose them.	Αποθέστε εδώ PDF, εικόνες, αρχεία κειμένου ή φακέλους ή επιλέξτε τα.
+	Drop PDFs, images, text files or folders here, or choose them.	Σύρετε εδώ PDF, εικόνες, αρχεία κειμένου ή φακέλους, ή επιλέξτε τα.
 	Every PDF, image and text file in the folder	Όλα τα PDF, οι εικόνες και τα αρχεία κειμένου του φακέλου
 	Every PDF, image and text file in the folder and the folders inside it	Όλα τα PDF, οι εικόνες και τα αρχεία κειμένου του φακέλου και των υποφακέλων του
 	No PDFs, images or text files found in {folder}	Δεν βρέθηκαν PDF, εικόνες ή αρχεία κειμένου στο {folder}
@@ -2248,7 +2248,7 @@ comment menu	Edit	Επεξεργασία
 	Tools	Εργαλεία
 	Inspector	Επιθεωρητής
 	PDF page: {size}	Σελίδα PDF: {size}
-	Match page at 100%	Ταίριασμα σελίδας στο 100%
+	Match page at 100%	Προσαρμογή σελίδας στο 100%
 	PDF scale: {scale}%	Κλίμακα PDF: {scale}%
 	Printer paper and scaling may differ. Check driver settings.	Το χαρτί και η κλίμακα του εκτυπωτή μπορεί να διαφέρουν. Ελέγξτε τις ρυθμίσεις του προγράμματος οδήγησης.
 	Drawing scale changes. Use Actual size for full-scale plans.	Η κλίμακα του σχεδίου αλλάζει. Για σχέδια σε πλήρη κλίμακα χρησιμοποιήστε το Πραγματικό μέγεθος.
@@ -2260,6 +2260,9 @@ comment menu	Edit	Επεξεργασία
 scroll speed	Slow	Αργή
 scroll speed	Normal	Κανονική
 scroll speed	Fast	Γρήγορη
+	Animation effects	Εφέ κίνησης
+animation effects	On	Ενεργά
+animation effects	Off	Ανενεργά
 	Enhance camera image	Βελτίωση εικόνας κάμερας
 	Drag the corners onto the document's edges, then choose Enhance page.	Σύρετε τις γωνίες στις άκρες του εγγράφου και επιλέξτε Βελτίωση σελίδας.
 	Enhance page	Βελτίωση σελίδας
@@ -2272,9 +2275,28 @@ scroll speed	Fast	Γρήγορη
 	This printer's driver doesn't take two-sided settings from other programs, so its own setting applies. Change it in Properties…	Το πρόγραμμα οδήγησης αυτού του εκτυπωτή δεν δέχεται ρυθμίσεις εκτύπωσης διπλής όψης από άλλα προγράμματα, οπότε ισχύει η δική του ρύθμιση. Αλλάξτε τη στις Ιδιότητες…
 	This field's font can't draw “{c}” ({code}), so PdfKub shows ? in its place. The value is saved, and other PDF viewers redraw the field from it.	Η γραμματοσειρά αυτού του πεδίου δεν μπορεί να σχεδιάσει το «{c}» ({code}), γι' αυτό το PdfKub δείχνει ? στη θέση του. Η τιμή αποθηκεύεται και άλλα προγράμματα προβολής PDF επανασχεδιάζουν το πεδίο από αυτήν.
 	The fonts PdfKub writes with can't draw “{c}” ({code}), so it shows as ? in every PDF viewer. The text is saved.	Οι γραμματοσειρές με τις οποίες γράφει το PdfKub δεν μπορούν να σχεδιάσουν το «{c}» ({code}), γι' αυτό εμφανίζεται ως ? σε κάθε πρόγραμμα προβολής PDF. Το κείμενο αποθηκεύεται.
+	Browser's print dialog	Παράθυρο εκτύπωσης του προγράμματος περιήγησης
+	Copies, two-sided printing and colour are chosen in the browser's print dialog.	Τα αντίγραφα, η εκτύπωση διπλής όψης και το χρώμα επιλέγονται στο παράθυρο εκτύπωσης του προγράμματος περιήγησης.
+	Preparing {n} sheets for printing…	Προετοιμασία {n} φύλλων για εκτύπωση…
+	Preparing sheet {done} of {total} for printing…	Προετοιμασία φύλλου {done} από {total} για εκτύπωση…
+	Opening the browser's print dialog…	Άνοιγμα του παραθύρου εκτύπωσης του προγράμματος περιήγησης…
+	Couldn't print from the browser ({e}); downloaded {name} to print instead	Δεν ήταν δυνατή η εκτύπωση από το πρόγραμμα περιήγησης ({e}); έγινε λήψη του {name} για εκτύπωση
 	Tools panel side	Πλευρά πλαισίου εργαλείων
 	Add comment	Προσθήκη σχολίου
 	Change tag properties	Αλλαγή ιδιοτήτων ετικέτας
+# Accessibility structure tags.
+	Tags panel	Πίνακας ετικετών
+	Tags	Ετικέτες
+	Tag type	Τύπος ετικέτας
+	Actual text	Πραγματικό κείμενο
+	Find a tag	Εύρεση ετικέτας
+	Collapse tag	Σύμπτυξη ετικέτας
+	Expand tag	Ανάπτυξη ετικέτας
+	Revert changes	Αναίρεση αλλαγών
+	Save tag properties	Αποθήκευση ιδιοτήτων ετικέτας
+	This document has no editable structure tags.	Αυτό το έγγραφο δεν έχει επεξεργάσιμες ετικέτες δομής.
+	{n} tags	{n} ετικέτες
+	Save or revert changes before selecting another tag.	Αποθηκεύστε ή αναιρέστε τις αλλαγές πριν επιλέξετε άλλη ετικέτα.
 	Left out: {names}	Παραλείφθηκαν: {names}
 	already a PDF	είναι ήδη PDF
 	no unused output name	δεν υπάρχει διαθέσιμο όνομα εξόδου
@@ -2299,3 +2321,26 @@ scroll speed	Fast	Γρήγορη
 	Thai and other scripts are drawn with an embedded font: the one you pick, or Sarabun.	Τα Ταϊλανδικά και άλλες γραφές σχεδιάζονται με ενσωματωμένη γραμματοσειρά: αυτή που επιλέγετε ή τη Sarabun.
 	Next tab	Επόμενη καρτέλα
 	Previous tab	Προηγούμενη καρτέλα
+
+# PDF tab context menu (#1233)
+	Close Tab	Κλείσιμο καρτέλας
+	Reopen Closed Tab	Επαναφορά κλειστής καρτέλας
+	Reveal in Finder	Εμφάνιση στο Finder
+	Reveal in File Explorer	Εμφάνιση στη διαχείριση αρχείων
+	Other colour…	Άλλο χρώμα…
+	Recent colours	Πρόσφατα χρώματα
+	Reading colours	Χρώματα ανάγνωσης
+	Replace document colours	Αντικατάσταση χρωμάτων εγγράφου
+	Page background	Φόντο σελίδας
+	Only change the colour of black text or line art	Αλλαγή χρώματος μόνο για μαύρο κείμενο ή γραμμικά σχέδια
+	Change the colour of line art as well as text	Αλλαγή χρώματος και στα γραμμικά σχέδια, όχι μόνο στο κείμενο
+	Colours are remapped while rendering; the document itself never changes.	Τα χρώματα αντιστοιχίζονται εκ νέου κατά την απόδοση· το ίδιο το έγγραφο δεν αλλάζει ποτέ.
+	Black on white	Μαύρο σε λευκό
+	White on black	Λευκό σε μαύρο
+	Yellow on black	Κίτρινο σε μαύρο
+	Green on black	Πράσινο σε μαύρο
+	Couldn't follow linked PDF: {reason}	Δεν ήταν δυνατό να ανοίξει το συνδεδεμένο PDF: {reason}
+	The linked PDF opened, but its named destination was not applied.	Το συνδεδεμένο PDF άνοιξε, αλλά ο ονομασμένος προορισμός του δεν εφαρμόστηκε.
+	The linked PDF opened, but its page destination was out of range.	Το συνδεδεμένο PDF άνοιξε, αλλά ο προορισμός σελίδας του είναι εκτός εύρους.
+	Local cross-PDF links require the desktop app	Οι τοπικοί σύνδεσμοι μεταξύ PDF απαιτούν την εφαρμογή υπολογιστή
+	The existing action will be preserved.	Η υπάρχουσα ενέργεια θα διατηρηθεί.

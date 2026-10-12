@@ -91,7 +91,9 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                     data.insert_temp(id, state);
                     changed
                 });
+                let mut action = None;
                 let mut close = None;
+                let mut move_side = None;
                 let mut rects = Vec::new();
                 ui.scope(|ui| {
                     ui.style_mut().always_scroll_the_only_direction = true;
@@ -120,6 +122,29 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                                 if changed && app.active == Some(i) && !app.combine_showing() {
                                     response.scroll_to_me(Some(Align::Center));
                                 }
+                                let id = app.views[i].id;
+                                let reveal = cfg!(not(target_arch = "wasm32")) && doc.path.is_some();
+                                response.context_menu(|ui| {
+                                    if ui.button(tl!("Close Tab")).clicked() {
+                                        action = Some(crate::tab_context::Action::Close(id));
+                                        ui.close();
+                                    }
+                                    if ui.add_enabled(!app.closed_tabs.is_empty(), egui::Button::new(tl!("Reopen Closed Tab"))).clicked() {
+                                        action = Some(crate::tab_context::Action::Reopen);
+                                        ui.close();
+                                    }
+                                    let label = if cfg!(target_os = "macos") { tl!("Reveal in Finder") } else { tl!("Reveal in File Explorer") };
+                                    if ui.add_enabled(reveal, egui::Button::new(label)).clicked() {
+                                        action = Some(crate::tab_context::Action::Reveal(id));
+                                        ui.close();
+                                    }
+                                    // PdfKub: split view (split.rs).
+                                    ui.separator();
+                                    if ui.button(tl!("Move to the other side")).clicked() {
+                                        move_side = Some(i);
+                                        ui.close();
+                                    }
+                                });
                                 if response.clicked() {
                                     app.active = Some(i);
                                 }
@@ -128,8 +153,16 @@ pub fn tab_strip(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                             if !split && ui.input(|i| !i.pointer.any_down()) {
                                 app.split.dragging = None;
                             }
-                            if let Some(i) = close {
-                                app.request_close_tab(i);
+                            if let Some(i) = move_side {
+                                app.move_to_other_side(i);
+                            }
+                            if let Some(i) = close
+                                && let Some(view) = app.views.get(i)
+                            {
+                                action.get_or_insert(crate::tab_context::Action::Close(view.id));
+                            }
+                            if let Some(action) = action {
+                                app.tab_action(action);
                             }
                             if app.combine_tab.open {
                                 // After the document tabs; its index can't clash with theirs.
@@ -482,6 +515,7 @@ fn main_menu(app: &mut PdfKubApp, ui: &mut egui::Ui) {
                     (RightPanel::Attachments, tl!("Attachments")),
                     (RightPanel::Signatures, tl!("Signatures")),
                     (RightPanel::Accessibility, tl!("Accessibility Checker")),
+                    (RightPanel::Tags, tl!("Tags")),
                     (RightPanel::Search, tl!("Search")),
                     (RightPanel::Compare, tl!("Compare")),
                 ] {
@@ -537,6 +571,7 @@ pub fn right_rail(app: &mut PdfKubApp, ui: &mut egui::Ui) {
             if has_check {
                 rail_button(ui, RightPanel::Accessibility, "accessibility", "Accessibility Checker", false);
             }
+            rail_button(ui, RightPanel::Tags, "tag", "Tags", false);
 
             // Page navigation cluster at the bottom (as in Acrobat's rail).
             let view = &mut app.views[index];
