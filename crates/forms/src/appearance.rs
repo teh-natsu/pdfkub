@@ -5,17 +5,23 @@
 //! marked-content block as viewers expect. Supported: single-line, multiline (wrapped), comb,
 //! password, quadding, auto font size (`0 Tf`), combo boxes and list boxes (selection shown).
 //!
-//! The `/DA` font is used when the form's `/DR` defines it as a simple font (text encoded in
-//! WinAnsi) or as a composite font with a predefined Unicode CMap such as `UniJIS-UTF16-H`, as
-//! Japanese forms use (text encoded in that CMap). Otherwise (other composite fonts, missing
-//! resources) Helvetica is used, so text is always visible. Widths use the approximate metrics
-//! of `pdfcraft-fonts` (Helvetica, or one em per full-width character in composite fonts).
+//! The `/DA` font is used when the form's `/DR` defines it as a simple font that can encode the
+//! displayed text (using its own encoding and Differences), or as a composite font with a
+//! predefined Unicode CMap such as `UniJIS-UTF16-H`, as Japanese forms use. Otherwise (unsupported
+//! characters, other composite fonts, missing resources) Helvetica is used. Text the chosen font
+//! can't hold (outside WinAnsi in Helvetica, or beyond U+FFFF in a UCS-2 CMap) is drawn as `?`, as
+//! Acrobat keeps a value its field font can't show: the value itself is stored as typed,
+//! [`field_appearance_drawn`] returns the first such character, and the caller marks the widget
+//! (`pdfcraft_fonts::UNDRAWN_MARK`) and asks other viewers to redraw the field
+//! (`/NeedAppearances`). Widths use the approximate metrics of `pdfcraft-fonts` (Helvetica, or one
+//! em per full-width character in composite fonts).
 //!
 //! `/MK /R` (0, 90, 180, 270, counterclockwise) lays the content out in the upright box and sets
 //! the appearance `/Matrix` so that box lands on the widget rectangle. Any other value is 0, and
 //! rotation 0 leaves `/Matrix` off.
 
 use pdfcraft_cos::{Dict, Document, Object, Stream};
+use pdfcraft_fonts::pdf::Metrics;
 use pdfcraft_fonts::{EmbedFace, UnicodeCMap, cjk_width, helvetica_width, literal, win_ansi, win_ansi_covers, wrap_fitting, wrap_with};
 
 use crate::{Field, FieldKind, Widget, acroform, flags};
@@ -111,24 +117,48 @@ pub fn parse_da(da: &str) -> Da {
 }
 
 /// How a field font's text is encoded and measured.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 enum FontText {
     WinAnsi,
+    /// A reused simple font's encoding, including indirect dictionaries and Differences.
+    Simple(Box<Metrics>),
     /// A composite font with a predefined Unicode CMap.
     Unicode(UnicodeCMap),
 }
 
 impl FontText {
-    fn encode(self, s: &str) -> Vec<u8> {
+    fn encode(&self, s: &str) -> Vec<u8> {
         match self {
             Self::WinAnsi => win_ansi(s),
+            // Selection checks every displayed string first; wrapping only removes line breaks.
+            Self::Simple(metrics) => metrics.encode(&s.replace('\t', " ")).unwrap_or_default(),
             Self::Unicode(cmap) => cmap.encode(s),
         }
     }
 
-    fn width(self, s: &str, size: f64) -> f64 {
+    fn can_encode(&self, s: &str) -> bool {
         match self {
-            Self::WinAnsi => helvetica_width(s, size),
+            Self::Simple(metrics) => metrics.encode(&s.replace('\t', " ")).is_some(),
+            _ => true,
+        }
+    }
+
+    /// The first character of `s` the encoding can't hold, which [`Self::encode`] writes as `?`
+    /// (a reused simple font is only chosen when it holds them all): reported by
+    /// [`field_appearance_drawn`], so that `?` is never silent (AGENTS.md §4).
+    fn first_unencodable(&self, s: &str) -> Option<char> {
+        match self {
+            Self::WinAnsi => pdfcraft_fonts::first_undrawable(s),
+            Self::Simple(metrics) => {
+                s.chars().map(|c| if c == '\t' { ' ' } else { c }).find(|c| metrics.encode(c.encode_utf8(&mut [0; 4])).is_none())
+            }
+            Self::Unicode(cmap) => cmap.first_unencodable(s),
+        }
+    }
+
+    fn width(&self, s: &str, size: f64) -> f64 {
+        match self {
+            Self::WinAnsi | Self::Simple(_) => helvetica_width(s, size),
             Self::Unicode(_) => cjk_width(s, size),
         }
     }
@@ -154,7 +184,7 @@ fn dr_font(doc: &Document, name: &str) -> Option<(Object, FontText)> {
     if matches!(fd.name(b"BaseFont"), Some(b"ZapfDingbats" | b"Symbol")) {
         return None;
     }
-    Some((entry, FontText::WinAnsi))
+    Some((entry, FontText::Simple(Box::new(Metrics::from_dict(doc, fd)))))
 }
 
 fn helvetica() -> Object {
@@ -255,15 +285,24 @@ fn frame(doc: &Document, wd: &Dict, w: f64, h: f64) -> (String, f64) {
     (c, 0.0)
 }
 
-/// The appearance of a text or choice field's widget showing `values`.
+/// The appearance of a text or choice field's widget showing `values`. Characters its font can't
+/// hold come out as `?`; [`field_appearance_drawn`] says which.
 pub fn field_appearance(doc: &mut Document, f: &Field, w: &Widget, values: &[String]) -> Stream {
     field_appearance_as(doc, f, w, values, true)
 }
 
 /// [`field_appearance`], where `format` false means `values` are already what to show (a
-/// custom Format script ran). Text the field's WinAnsi font can't show (Thai) is drawn with
-/// Sarabun embedded in `doc`; the field's `/DA` is left as it is.
+/// custom Format script ran). Text the field's font can't show (Thai) is drawn with Sarabun
+/// embedded in `doc`; the field's `/DA` is left as it is.
 pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[String], format: bool) -> Stream {
+    field_appearance_drawn(doc, f, w, values, format).0
+}
+
+/// [`field_appearance_as`] with the first character it drew as `?` because no font could hold it:
+/// the form's font is a simple (WinAnsi) font and Sarabun lacks it too, Helvetica stands in for one
+/// PdfKub can't write with (an embedded subset, `Identity-H`), or a UCS-2 CMap meets a character
+/// beyond U+FFFF.
+pub fn field_appearance_drawn(doc: &mut Document, f: &Field, w: &Widget, values: &[String], format: bool) -> (Stream, Option<char>) {
     // The Format event: what is shown, not what is stored.
     let formatted: Vec<String>;
     let values = if format
@@ -282,14 +321,33 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
     let place = placement(mk_rotation(doc, &wd), page_w, page_h);
     let (width, height) = (place.layout_w, place.layout_h);
     let da = parse_da(wd.get(b"DA").and_then(|o| doc.resolve(o).as_string().map(|s| s.to_text())).as_deref().unwrap_or(&f.da));
-    // The field's own font when it can show the text: a WinAnsi font for Latin text, a Unicode
-    // CID font for Chinese, Japanese or Korean. Text it can't show (Thai, or anything outside
-    // WinAnsi with a simple font) is drawn with Sarabun embedded in `doc`.
-    let dr = dr_font(doc, &da.font);
+    let text: String = if f.kind == FieldKind::Combo {
+        values.iter().map(|v| f.options.iter().find(|(e, _)| e == v).map_or(v.clone(), |(_, d)| d.clone())).collect::<Vec<_>>().join(", ")
+    } else {
+        values.first().cloned().unwrap_or_default()
+    };
+    let text = if f.has(flags::PASSWORD) { "*".repeat(text.chars().count()) } else { text };
+    let can_show = |enc: &FontText| {
+        if f.kind == FieldKind::List {
+            f.options.iter().all(|(_, display)| enc.can_encode(display))
+        } else if f.kind == FieldKind::Text && f.has(flags::MULTILINE) {
+            text.split(['\n', '\r']).all(|line| enc.can_encode(line))
+        } else {
+            enc.can_encode(&text)
+        }
+    };
+    // The field's own font when it can show the text: a WinAnsi or simple font for Latin text, a
+    // Unicode CID font for Chinese, Japanese or Korean. Text it can't show (Thai, or anything
+    // outside WinAnsi with a simple font) is drawn with Sarabun embedded in `doc`.
+    let dr = dr_font(doc, &da.font).filter(|(_, enc)| can_show(enc));
     let thai = |s: &str| s.chars().any(|c| ('\u{0E00}'..='\u{0EFF}').contains(&c));
-    let field_shows = |s: &str| match &dr {
-        Some((_, FontText::Unicode(_))) => !thai(s),
-        _ => win_ansi_covers(s),
+    // Line by line: a multiline value's line breaks are never drawn.
+    let field_shows = |s: &str| {
+        s.split(['\n', '\r']).all(|s| match &dr {
+            Some((_, FontText::Unicode(_))) => !thai(s),
+            Some((_, enc @ FontText::Simple(_))) => !thai(s) && enc.can_encode(s),
+            _ => win_ansi_covers(s),
+        })
     };
     // Only when Sarabun can draw it: Japanese in a field whose font can't be addressed by Unicode
     // keeps Helvetica's question marks rather than empty boxes.
@@ -307,14 +365,16 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
         Some(fc) => wrap_fitting(s, |line| fc.shape(line).width(size) <= width),
         None => wrap_with(s, size, width, width_of),
     };
-    let width_of = |text: &str, size: f64| enc.width(text, size);
     let (mut c, bw) = frame(doc, &wd, width, height);
     let pad = 2.0 + bw;
     let inner_w = (width - 2.0 * pad).max(1.0);
     let q = wd.get(b"Q").and_then(|o| doc.resolve(o).as_int()).unwrap_or(f.quadding);
-    // Where each piece of text goes; drawn once the layout is done.
+    // Where each piece of text goes; drawn once the layout is done. A line break in a single-line
+    // value is a space, as in viewers (multiline text is split).
     let mut placed: Vec<(f64, f64, String)> = Vec::new();
-    let show = |placed: &mut Vec<(f64, f64, String)>, x: f64, y: f64, text: &str| placed.push((x, y, text.to_owned()));
+    let show = |placed: &mut Vec<(f64, f64, String)>, x: f64, y: f64, text: &str| {
+        placed.push((x, y, text.chars().map(|c| if matches!(c, '\n' | '\r') { ' ' } else { c }).collect()))
+    };
     let x_for = |text: &str, size: f64| -> f64 {
         let tw = width_of(text, size);
         match q {
@@ -345,12 +405,6 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
             }
         }
         _ => {
-            let text: String = if f.kind == FieldKind::Combo {
-                values.iter().map(|v| f.options.iter().find(|(e, _)| e == v).map_or(v.clone(), |(_, d)| d.clone())).collect::<Vec<_>>().join(", ")
-            } else {
-                values.first().cloned().unwrap_or_default()
-            };
-            let text = if f.has(flags::PASSWORD) { "*".repeat(text.chars().count()) } else { text };
             let comb = f.has(flags::COMB) && !f.has(flags::MULTILINE) && !f.has(flags::PASSWORD) && f.max_len.is_some_and(|m| m > 0);
             if f.kind == FieldKind::Text && f.has(flags::MULTILINE) {
                 if size == 0.0 {
@@ -392,7 +446,16 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
         }
     }
     let mut body: Vec<u8> = Vec::new();
+    // The first character drawn that the font can't hold (drawn as `?`, or missing from Sarabun),
+    // for the caller to report.
+    let mut unencodable: Option<char> = None;
     for (x, y, text) in &placed {
+        if unencodable.is_none() {
+            unencodable = match &embedded {
+                Some((fc, _)) => text.chars().find(|c| !c.is_whitespace() && !fc.covers(c.encode_utf8(&mut [0; 4]))),
+                None => enc.first_unencodable(text),
+            };
+        }
         match &embedded {
             Some((fc, font)) => {
                 let shaped = fc.shape(text);
@@ -437,7 +500,7 @@ pub fn field_appearance_as(doc: &mut Document, f: &Field, w: &Widget, values: &[
     d.set(b"Subtype".to_vec(), Object::name("Form"));
     set_form_box(&mut d, place);
     d.set(b"Resources".to_vec(), Object::Dict(res));
-    Stream::flate(d, &content)
+    (Stream::flate(d, &content), unencodable)
 }
 
 /// On/Off appearances for a check box or radio button that has none (a check mark or a dot,

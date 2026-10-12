@@ -402,6 +402,7 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
                             &mut close,
                             i,
                             None,
+                            crate::chrome::TAB_HEIGHT,
                         )
                         .interact(Sense::drag());
                         if resp.drag_started() {

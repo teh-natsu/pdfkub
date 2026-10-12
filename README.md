@@ -93,6 +93,8 @@ pdfkub-cli split   report.pdf --every 10 --out-dir parts/
 
 ต้องมี Rust 1.90 ขึ้นไป (บน Windows ต้องมี Visual Studio Build Tools ที่มี C++ ด้วย)
 
+Building needs Rust 1.95 or later.
+
 ```sh
 git clone https://github.com/teh-natsu/pdfkub
 cd pdfkub

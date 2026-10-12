@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use egui::{Color32, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Stroke, Visuals};
+use egui::{Color32, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Rect, Response, Stroke, Vec2, Visuals};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum ThemeKind {
@@ -23,8 +23,7 @@ pub enum ThemePreference {
 
 impl ThemePreference {
     /// The colours to draw. `system` is what the operating system says, `None` when it says
-    /// nothing; `fallback` is then what the app last drew, so an unanswering desktop leaves the
-    /// user's choice alone.
+    /// nothing; `fallback` is supplied by the caller. PdfKub uses Light for an unknown desktop.
     pub fn resolve(self, system: Option<bool>, fallback: ThemeKind) -> ThemeKind {
         match self {
             Self::Light => ThemeKind::Light,
@@ -130,56 +129,156 @@ impl Tokens {
     }
 }
 
+/// Hover and press amounts for chrome controls. The wash eases in; holding the pointer
+/// darkens it and drops the content one pixel, so a click reads as a key settling.
+#[derive(Clone, Copy, Debug)]
+pub struct Press {
+    pub hover: f32,
+    pub down: f32,
+}
+
+impl Press {
+    pub fn track(ui: &egui::Ui, resp: &Response) -> Self {
+        let hot = resp.hovered() || resp.is_pointer_button_down_on();
+        let ease = egui::emath::easing::quadratic_out;
+        Self {
+            hover: ui.ctx().animate_bool_with_time_and_easing(resp.id.with("chrome-hover"), hot, 0.12, ease),
+            down: ui.ctx().animate_bool_with_time_and_easing(resp.id.with("chrome-down"), resp.is_pointer_button_down_on(), 0.06, ease),
+        }
+    }
+
+    pub fn fill(self, rest: Color32, hover: Color32, pressed: Color32) -> Color32 {
+        rest.lerp_to_gamma(hover, self.hover).lerp_to_gamma(pressed, self.down)
+    }
+
+    /// One pixel down at a full press.
+    pub fn offset(self) -> Vec2 {
+        Vec2::new(0.0, self.down)
+    }
+
+    /// The colour [`Self::wash`] paints.
+    pub fn wash_color(self, t: &Tokens, selected: bool) -> Color32 {
+        if selected {
+            self.fill(t.accent_soft, t.accent_soft.lerp_to_gamma(t.accent, 0.16), t.selected)
+        } else {
+            self.fill(Color32::TRANSPARENT, t.hover, t.pressed)
+        }
+    }
+
+    /// Soft wash behind a control. `selected` keeps the accent fill.
+    pub fn wash(self, ui: &egui::Ui, rect: Rect, radius: impl Into<CornerRadius>, selected: bool) {
+        let fill = self.wash_color(&Tokens::get(ui.ctx()), selected);
+        if fill.a() > 0 {
+            ui.painter().rect_filled(rect, radius, fill);
+        }
+    }
+}
+
+/// Pointing hand, the cursor for a control that clicks.
+pub fn hand(resp: Response) -> Response {
+    resp.on_hover_cursor(egui::CursorIcon::PointingHand)
+}
+
 pub fn install_fonts(ctx: &egui::Context) {
-    ctx.set_fonts(font_definitions());
+    install_fonts_for(ctx, CjkPreference::Default);
+}
+
+/// The interface language's claim on the CJK fallback faces.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CjkPreference {
+    /// Japanese faces first (every non-Chinese language).
+    #[default]
+    Default,
+    SimplifiedChinese,
+    TraditionalChinese,
+}
+
+impl CjkPreference {
+    /// The preference for a UI language code (`zh-hans`, `zh-hant`, anything else).
+    pub fn for_language(code: &str) -> Self {
+        match code {
+            "zh-hans" => Self::SimplifiedChinese,
+            "zh-hant" => Self::TraditionalChinese,
+            _ => Self::Default,
+        }
+    }
 }
 
 /// Install the interface fonts with the CJK fallback order for the UI language (Chinese
-/// first for Simplified Chinese, Japanese first otherwise). Call it when the language
-/// changes; the new faces take effect next frame.
-pub fn install_fonts_for(ctx: &egui::Context, prefer_hans: bool) {
-    ctx.set_fonts(installed_font_definitions(prefer_hans));
+/// first for Chinese, Japanese first otherwise). Call it when the language changes; the new
+/// faces take effect next frame.
+pub fn install_fonts_for(ctx: &egui::Context, cjk: CjkPreference) {
+    ctx.set_fonts(installed_font_definitions(cjk));
 }
 
 /// The name of the installed face [`installed_font_definitions`] may add after the embedded ones.
 pub const SYSTEM_FALLBACK: &str = "system-fallback";
-/// The installed CJK face added before [`SYSTEM_FALLBACK`] (PdfKub: builds without craft-fonts).
-pub const SYSTEM_FALLBACK_CJK: &str = "system-fallback-cjk";
-/// The installed Telugu face, beside [`SYSTEM_FALLBACK_CJK`].
+/// The name of the installed Devanagari (Hindi) face [`installed_font_definitions`] may add.
+pub const SYSTEM_DEVANAGARI_FALLBACK: &str = "system-devanagari-fallback";
+/// The installed Telugu face (PdfKub: builds without craft-fonts), beside the Devanagari one.
 pub const SYSTEM_FALLBACK_TELUGU: &str = "system-fallback-telugu";
 
 /// What [`install_fonts_for`] installs: [`font_definitions_for`], then, on desktop, one face
-/// already installed on this machine as the last fallback of every family. It only draws
-/// characters no embedded face has (an Arabic file name in a build without craft-fonts);
-/// `PDFKUB_SYSTEM_FONTS=0` leaves it out.
-pub fn installed_font_definitions(prefer_hans: bool) -> FontDefinitions {
+/// already installed on this machine. It only draws characters no embedded face has.
+///
+/// - In a Chinese interface built without a `Hans` craft-fonts face (every release so far,
+///   #826), it is a Chinese system face (Microsoft YaHei, PingFang, …), placed before the
+///   Japanese craft-fonts faces: they lack hundreds of the catalog's characters (欢, 导, 签, …),
+///   and one line drawn from two faces with different vertical metrics would not sit on one
+///   baseline.
+/// - Otherwise it is the last fallback of every family (an Arabic file name in a build without
+///   craft-fonts).
+///
+/// An installed Devanagari face, when there is one, ends every family just before that one, so
+/// Hindi text draws in a build without a Devanagari face.
+///
+/// `PDFKUB_SYSTEM_FONTS=0` leaves them out.
+pub fn installed_font_definitions(cjk: CjkPreference) -> FontDefinitions {
     #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
-    let mut fonts = font_definitions_for(prefer_hans);
-    // Chinese and Japanese (language names, file names) when no embedded face has them; before
-    // the Arabic fallback, which stays last (the two share no letters).
+    let mut fonts = font_definitions_for(cjk == CjkPreference::SimplifiedChinese);
+    // Telugu (the language list's name) when no embedded face has it.
     #[cfg(not(target_arch = "wasm32"))]
-    for (name, data) in [(SYSTEM_FALLBACK_CJK, crate::system_fonts::cjk_fallback()), (SYSTEM_FALLBACK_TELUGU, crate::system_fonts::telugu_fallback())]
-    {
-        let Some(data) = data else { continue };
-        fonts.font_data.insert(name.to_owned(), data);
+    if let Some(data) = crate::system_fonts::telugu_fallback() {
+        fonts.font_data.insert(SYSTEM_FALLBACK_TELUGU.to_owned(), data);
         for stack in fonts.families.values_mut() {
-            stack.push(name.to_owned());
+            stack.push(SYSTEM_FALLBACK_TELUGU.to_owned());
         }
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if let Some(data) = crate::system_fonts::fallback() {
-        fonts.font_data.insert(SYSTEM_FALLBACK.to_owned(), data);
-        for stack in fonts.families.values_mut() {
-            stack.push(SYSTEM_FALLBACK.to_owned());
+    {
+        use crate::system_fonts::{Need, fallback};
+        // Before the general installed face, which stays the last fallback outside Chinese.
+        if let Some(data) = crate::system_fonts::devanagari_fallback() {
+            fonts.font_data.insert(SYSTEM_DEVANAGARI_FALLBACK.to_owned(), data);
+            for stack in fonts.families.values_mut() {
+                stack.push(SYSTEM_DEVANAGARI_FALLBACK.to_owned());
+            }
+        }
+        let need = match cjk {
+            _ if !pdfcraft_fonts::ui_chinese_fonts().is_empty() => Need::Other,
+            CjkPreference::SimplifiedChinese => Need::Hans,
+            CjkPreference::TraditionalChinese => Need::Hant,
+            CjkPreference::Default => Need::Other,
+        };
+        if let Some(data) = fallback(need) {
+            fonts.font_data.insert(SYSTEM_FALLBACK.to_owned(), data);
+            let japanese: Vec<String> = pdfcraft_fonts::ui_japanese_fonts().iter().map(|f| f.name()).collect();
+            for stack in fonts.families.values_mut() {
+                let at = match need {
+                    Need::Other => None,
+                    Need::Hans | Need::Hant => stack.iter().position(|n| japanese.contains(n)),
+                };
+                stack.insert(at.unwrap_or(stack.len()), SYSTEM_FALLBACK.to_owned());
+            }
         }
     }
     fonts
 }
 
 /// The interface fonts: Inter (and JetBrains Mono for code) first, then Anuphan for Thai, then
-/// egui's defaults, then the CJK, Arabic and Telugu faces of the optional craft-fonts build input
-/// as the last fallback in every family. Without craft-fonts there is no Japanese, Chinese,
-/// Arabic or Telugu face here.
+/// egui's defaults, then the CJK, Arabic, Telugu, Hebrew and Thai faces of the optional
+/// craft-fonts build input as the last fallback in every family. Without craft-fonts there is no
+/// Japanese, Chinese, Arabic, Telugu or Hebrew face here.
 pub fn font_definitions() -> FontDefinitions {
     font_definitions_for(false)
 }
@@ -193,7 +292,8 @@ pub fn font_definitions_for(prefer_hans: bool) -> FontDefinitions {
     let add = |fonts: &mut FontDefinitions, name: &str, bytes: &'static [u8]| {
         fonts.font_data.insert(name.to_owned(), Arc::new(FontData::from_static(bytes)));
     };
-    add(&mut fonts, "Inter", include_bytes!("../../../assets/fonts/Inter-Regular.ttf"));
+    // Shared with typed signatures' fallback glyphs, so the font is embedded once.
+    add(&mut fonts, "Inter", pdfcraft_fonts::INTER_REGULAR);
     add(&mut fonts, "Inter-Medium", include_bytes!("../../../assets/fonts/Inter-Medium.ttf"));
     add(&mut fonts, "Inter-SemiBold", include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf"));
     add(&mut fonts, "JetBrainsMono", include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf"));
@@ -215,9 +315,15 @@ pub fn font_definitions_for(prefer_hans: bool) -> FontDefinitions {
             fonts.families.entry(family).or_default().push(name.clone());
         }
     }
-    // Arabic-script faces (file names, document titles) and Telugu faces (the Telugu interface,
-    // file names) after the CJK ones; the ranges don't overlap.
-    for face in pdfcraft_fonts::ui_arabic_fonts().into_iter().chain(pdfcraft_fonts::ui_telugu_fonts()) {
+    // Arabic-script faces (file names, document titles), Telugu faces (the Telugu interface,
+    // file names), Hebrew faces (file names, text being edited) and Thai faces after the CJK ones; the
+    // ranges don't overlap.
+    for face in pdfcraft_fonts::ui_arabic_fonts()
+        .into_iter()
+        .chain(pdfcraft_fonts::ui_telugu_fonts())
+        .chain(pdfcraft_fonts::ui_hebrew_fonts())
+        .chain(pdfcraft_fonts::ui_thai_fonts())
+    {
         let name = face.name();
         if !fonts.font_data.contains_key(&name) {
             add(&mut fonts, &name, face.bytes);
@@ -262,8 +368,10 @@ pub fn sarabun(size: f32, bold: bool) -> FontId {
 }
 
 pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
-    // egui must use the same theme for popup/menu styles as our custom chrome.
-    ctx.set_theme(if kind == ThemeKind::Dark { egui::Theme::Dark } else { egui::Theme::Light });
+    // Keep the native window inherited. A concrete egui theme pins macOS's
+    // NSWindow appearance and prevents winit from delivering ThemeChanged.
+    // Our saved choice owns the palette; both egui branches receive it below.
+    ctx.set_theme(egui::ThemePreference::System);
     let t = Tokens::for_kind(kind);
     ctx.data_mut(|d| d.insert_temp(egui::Id::new("pdfkub-theme"), t));
     let mut v = if t.dark() { Visuals::dark() } else { Visuals::light() };
@@ -293,6 +401,8 @@ pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
     v.widgets.hovered.bg_stroke = Stroke::NONE;
     v.widgets.active.weak_bg_fill = t.pressed;
     v.widgets.active.bg_fill = t.pressed;
+    // Stock buttons (menus, dialogs) use the same pointing hand as the custom chrome.
+    v.interact_cursor = Some(egui::CursorIcon::PointingHand);
     v.widgets.open.weak_bg_fill = t.hover;
     // Crisper text at 100–150 % scaling (#76): glyphs sit on whole pixels instead of being
     // rendered at quarter-pixel offsets, which egui notes blurs them. In the light theme, a mild
@@ -310,36 +420,36 @@ pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
         s.spacing.menu_margin = egui::Margin::same(6);
         s.spacing.scroll.bar_width = 8.0;
         s.spacing.scroll.floating = true;
+        s.spacing.scroll.floating_width = 3.0;
+        s.spacing.scroll.foreground_color = true;
         s.text_styles.insert(egui::TextStyle::Body, regular(13.0));
         s.text_styles.insert(egui::TextStyle::Button, regular(13.0));
         s.text_styles.insert(egui::TextStyle::Small, regular(11.0));
         s.text_styles.insert(egui::TextStyle::Heading, semibold(17.0));
         s.interaction.tooltip_delay = 0.35;
     });
+    let style = ctx.global_style();
+    ctx.set_style_of(egui::Theme::Light, style.clone());
+    ctx.set_style_of(egui::Theme::Dark, style);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// The language list's Chinese and Japanese names draw (no empty boxes) in a build without
-    /// craft-fonts, from the installed CJK face (skipped where the machine has none).
+    /// The language list's Telugu name draws in a build without craft-fonts, from the installed
+    /// Telugu face (skipped where the machine has none).
     #[test]
     #[cfg(not(target_arch = "wasm32"))]
-    fn chinese_and_japanese_language_names_have_glyphs() {
-        if crate::system_fonts::cjk_fallback().is_none() {
-            eprintln!("skipped: no CJK face installed");
+    fn the_telugu_language_name_has_glyphs() {
+        if crate::system_fonts::telugu_fallback().is_none() {
+            eprintln!("skipped: no Telugu face installed");
             return;
         }
         let ctx = egui::Context::default();
-        ctx.set_fonts(installed_font_definitions(false));
+        ctx.set_fonts(installed_font_definitions(CjkPreference::Default));
         ctx.run_ui(Default::default(), |_| {}).textures_delta.clear();
-        for name in ["简体中文", "繁體中文", "日本語"] {
-            assert!(ctx.fonts_mut(|f| f.has_glyphs(&regular(13.0), name)), "{name}");
-        }
-        if crate::system_fonts::telugu_fallback().is_some() {
-            assert!(ctx.fonts_mut(|f| f.has_glyphs(&regular(13.0), "తెలుగు")), "Telugu");
-        }
+        assert!(ctx.fonts_mut(|f| f.has_glyphs(&regular(13.0), "\u{0C24}\u{0C46}\u{0C32}\u{0C41}\u{0C17}\u{0C41}")), "Telugu");
     }
 
     /// "Use system setting" draws what the operating system says, dark or light.
@@ -370,6 +480,19 @@ mod tests {
         };
         let (x, y) = (lum(a) + 0.05, lum(b) + 0.05);
         x.max(y) / x.min(y)
+    }
+
+    #[test]
+    fn press_darkens_then_sinks() {
+        let rest = Color32::from_rgb(0xFF, 0xFF, 0xFF);
+        let hover = Color32::from_rgb(0xF0, 0xF0, 0xF3);
+        let pressed = Color32::from_rgb(0xE4, 0xE4, 0xE9);
+        let idle = Press { hover: 0.0, down: 0.0 };
+        assert_eq!(idle.fill(rest, hover, pressed), rest);
+        assert_eq!(idle.offset(), Vec2::ZERO);
+        let held = Press { hover: 1.0, down: 1.0 };
+        assert_eq!(held.fill(rest, hover, pressed), pressed);
+        assert_eq!(held.offset(), Vec2::new(0.0, 1.0));
     }
 
     #[test]

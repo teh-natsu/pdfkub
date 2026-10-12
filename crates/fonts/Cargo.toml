@@ -16,3 +16,4 @@ skrifa = "0.44"
 # already in the tree via egui, on the same read-fonts.
 harfrust = "0.12"
 thiserror = { workspace = true }
+unicode-bidi = "0.3"
