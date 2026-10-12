@@ -157,6 +157,30 @@ fn the_type_box_grows_as_text_is_typed() {
     assert!(full > empty * 2.0, "the box widens with its text: {empty} -> {full}");
 }
 
+/// PdfKub: the box is as wide as what's typed, in the font it's shown in, so no word scrolls out
+/// of sight: Thai (shown in Sarabun) and wide Latin letters were wider than a per-character
+/// estimate, and the box cut off the first letter and the last marks.
+#[test]
+fn the_type_box_fits_thai_and_wide_letters() {
+    for (text, thai) in [("ทดสอบพิมพ์", true), ("ทดสอบพิมพ์ภาษาไทยในกล่องข้อความ", true), ("WWWWMMMMWWWWMMMM", false)]
+    {
+        let mut h = harness();
+        h.state_mut().execute("sign.fill.text");
+        click(&mut h, 50.0, 250.0);
+        h.run_steps(2);
+        h.event(egui::Event::Text(text.into()));
+        h.run_steps(3);
+        let s = h.state();
+        let page = &s.session.get(s.views[0].id).unwrap().info.pages[0];
+        let zoom = s.views[0].page_screen_rect(0).unwrap().width() / page.width;
+        let size = (pdfcraft_ui_egui::fill_sign::TEXT_SIZE as f32 * zoom).max(8.0);
+        let font = if thai { pdfcraft_ui_egui::theme::sarabun(size, false) } else { egui::FontId::proportional(size) };
+        let text_w = h.ctx.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font, egui::Color32::BLACK).size().x);
+        let box_w = type_box_rect(&h).width();
+        assert!(box_w >= text_w + 8.0, "{text}: box {box_w} for text {text_w}");
+    }
+}
+
 #[test]
 fn signing_draws_a_signature_once_and_places_it() {
     let mut h = harness();

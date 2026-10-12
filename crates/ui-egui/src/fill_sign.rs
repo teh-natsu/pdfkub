@@ -680,18 +680,21 @@ pub(crate) fn type_box(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
         let Some(t) = view.fill_text.as_mut() else { return };
         // The box is white in every theme, so the caret must not follow the theme (pale in dark mode) (#655).
         ui.visuals_mut().text_cursor.stroke.color = crate::edit_text_ui::caret_color_on(Color32::WHITE);
-        // Counted in characters that take room: Thai vowel and tone marks sit on their letter.
-        let chars = t.text.chars().filter(|&c| !pdfcraft_fonts::is_mark(c)).count();
-        let width = ((chars.max(8) as f32) * TEXT_SIZE as f32 * 0.6 * zoom).clamp(60.0, 600.0);
-        // The area's max rect is last frame's size, which caps the edit's width; widen it so the
-        // box grows as text is typed.
-        ui.set_min_width(width);
         // Thai is embedded in Sarabun: preview it that way.
         let font = if pdfcraft_fonts::win_ansi_covers(&t.text) {
             egui::FontId::proportional((TEXT_SIZE as f32 * zoom).max(8.0))
         } else {
             crate::theme::sarabun((TEXT_SIZE as f32 * zoom).max(8.0), false)
         };
+        // PdfKub: as wide as the text in the font shown (the edit's own margins, the caret and
+        // room for the next letter included), so it never scrolls a word out of sight. An estimate
+        // per character was too narrow for Thai and for wide Latin letters.
+        let shown = if t.text.is_empty() { tl!("Type text").to_owned() } else { t.text.clone() };
+        let text_w = ui.fonts_mut(|f| f.layout_no_wrap(shown, font.clone(), Color32::BLACK).size().x);
+        let width = (text_w + 8.0 + font.size * 0.8).max(8.0 * 0.6 * font.size).clamp(60.0, 2400.0);
+        // The area's max rect is last frame's size, which caps the edit's width; widen it so the
+        // box grows as text is typed.
+        ui.set_min_width(width);
         let r = ui.add(
             egui::TextEdit::singleline(&mut t.text)
                 .font(font)
