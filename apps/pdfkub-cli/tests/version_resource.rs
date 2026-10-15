@@ -35,7 +35,8 @@ fn the_exe_has_version_info_with_the_package_version() {
     for (key, value) in [
         ("ProductName", "PdfKub"),
         ("FileDescription", "PdfKub command-line tool"),
-        ("LegalCopyright", "Copyright (c) the PdfCraft contributors. MIT OR Apache-2.0."),
+        ("CompanyName", "Nattapol Chaisri"),
+        ("LegalCopyright", "Copyright (c) 2026 Nattapol Chaisri and the PdfKub contributors; based on PdfCraft. MIT OR Apache-2.0."),
         ("OriginalFilename", "pdfkub-cli.exe"),
         ("InternalName", "pdfkub-cli"),
         ("FileVersion", env!("CARGO_PKG_VERSION")),

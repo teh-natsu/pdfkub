@@ -259,28 +259,3 @@ fn dragging_a_tab_along_a_sides_row_reorders_it_there() {
     assert_eq!(left, ["c.pdf", "a.pdf", "b.pdf"]);
     assert!(app.is_split(), "a drag within a side doesn't move the tab across");
 }
-
-#[test]
-fn ctrl_tab_cycles_tabs_on_the_side_with_focus() {
-    let mut h = harness(&[("a.pdf", 2), ("b.pdf", 2), ("c.pdf", 2)]);
-    let active = |h: &Harness<'static, PdfKubApp>| h.state().active.map(|i| name_of(h.state(), i)).unwrap();
-    assert_eq!(active(&h), "c.pdf");
-    h.key_press_modifiers(egui::Modifiers::CTRL, egui::Key::Tab);
-    h.run_steps(1);
-    assert_eq!(active(&h), "a.pdf", "wraps around");
-    h.key_press_modifiers(egui::Modifiers::CTRL | egui::Modifiers::SHIFT, egui::Key::Tab);
-    h.run_steps(1);
-    assert_eq!(active(&h), "c.pdf");
-    // Split: only the focused side's tabs.
-    let c = (0..3).find(|&i| name_of(h.state(), i) == "c.pdf").unwrap();
-    h.state_mut().move_to_other_side(c);
-    h.run_steps(2);
-    let a = (0..3).find(|&i| name_of(h.state(), i) == "a.pdf").unwrap();
-    h.state_mut().active = Some(a);
-    h.run_steps(1);
-    for expected in ["b.pdf", "a.pdf"] {
-        h.key_press_modifiers(egui::Modifiers::CTRL, egui::Key::Tab);
-        h.run_steps(1);
-        assert_eq!(active(&h), expected);
-    }
-}

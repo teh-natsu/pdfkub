@@ -5,21 +5,22 @@
     wix build pdfkub.wxs installer-ui.wxs -arch x64 -d Version=1.2.3 -d BinDir=... -d IconPath=... -o out.msi
 
   Per-machine install into Program Files, a Start Menu shortcut, a desktop shortcut (on by default,
-  optional), an App Paths entry, PdfKub registered as a PDF handler (offered under "Open with"
-  and in Default apps, never forced as the default), and "Edit with PdfKub" on PDF files'
-  right-click menu (on by default, optional). Files opened with PdfKub arrive on its command
-  line.
+  optional, and an update keeps it only if it is still there), an App Paths entry, PdfKub registered as a PDF handler (offered under "Open with"
+  and in Default apps, never forced as the default), "Edit with PdfKub" on PDF files'
+  right-click menu and "Create PDF with PdfKub…" on image files' right-click menu (both on by
+  default, optional, and an update keeps the installed version's choice). Files opened with
+  PdfKub arrive on its command line.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package
       Name="PdfKub"
-      Manufacturer="Nattpol Chaisri"
+      Manufacturer="Nattapol Chaisri"
       Version="$(var.Version)"
       UpgradeCode="ED6C9569-1570-4C49-8150-04D46F4D986F"
       Scope="perMachine"
       Compressed="yes"
       Language="1033">
-    <SummaryInformation Description="PdfKub PDF workbench" Manufacturer="Nattpol Chaisri" />
+    <SummaryInformation Description="PdfKub PDF workbench" Manufacturer="Nattapol Chaisri" />
     <!-- HKLM registrations must never point into a per-user installation (#305). Allow removal
          of an existing installation even if an older MSI let it install per-user. -->
     <Launch Condition="ALLUSERS = 1 OR (Installed AND REMOVE = &quot;ALL&quot;)"
@@ -37,13 +38,45 @@
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/teh-natsu/pdfkub" />
     <Property Id="ARPURLUPDATEINFO" Value="https://github.com/teh-natsu/pdfkub" />
     <Property Id="ARPHELPLINK" Value="https://github.com/teh-natsu/pdfkub/issues" />
-    <!-- Desktop shortcut (#143): on by default, a checkbox in the full-UI welcome dialog, and
-         INSTALLDESKTOPSHORTCUT=0 on the msiexec command line for unattended installs. Secure, so the
-         choice made in the (unelevated) UI reaches the elevated install. -->
-    <Property Id="INSTALLDESKTOPSHORTCUT" Value="1" Secure="yes" />
-    <!-- "Edit with PdfKub" on the right-click menu of PDF files in File Explorer (#682): on by
-         default, the same way, and INSTALLPDFCONTEXTMENU=0 for unattended installs without it. -->
-    <Property Id="INSTALLPDFCONTEXTMENU" Value="1" Secure="yes" />
+    <!-- Desktop shortcut (#143): on by default for a first install, a checkbox in the full-UI
+         welcome dialog, and INSTALLDESKTOPSHORTCUT=0 on the msiexec command line for unattended
+         installs. Secure, so the choice made in the (unelevated) UI reaches the elevated install.
+         An update keeps the shortcut only if it is still on the desktop (#1058): the launcher
+         updates with /passive and no properties, so deleting the shortcut is the only way its
+         users can say no. A value given on the command line wins. -->
+    <Property Id="INSTALLDESKTOPSHORTCUT" Secure="yes" />
+    <Property Id="EXISTINGDESKTOPSHORTCUT">
+      <DirectorySearch Id="DesktopSearch" Path="[DesktopFolder]" Depth="0">
+        <FileSearch Name="PdfKub.lnk" />
+      </DirectorySearch>
+    </Property>
+    <SetProperty Id="INSTALLDESKTOPSHORTCUT" Value="1" After="AppSearch" Sequence="first"
+        Condition="NOT INSTALLDESKTOPSHORTCUT AND (NOT WIX_UPGRADE_DETECTED OR EXISTINGDESKTOPSHORTCUT)" />
+    <!-- The File Explorer menus: "Edit with PdfKub" for PDF files (#682) and "Create PDF with
+         PdfKub…" for images (#190). Each is on by default for a first install and has a property
+         to leave it out of unattended installs: INSTALLPDFCONTEXTMENU=0 (also a welcome-dialog
+         checkbox) and INSTALLIMAGECONTEXTMENU=0. Secure, like the desktop shortcut's.
+         An update keeps the installed version's choice (#305) by looking for the menu's registry
+         key, the way the desktop shortcut looks for its file: AppSearch runs before the old version
+         is removed. Releases from before a menu existed (the PDF one came in 0.7.1, the image one in
+         0.4.0) never had the key, so updating from one of them counts as a first install; the
+         OnlyDetect rows below tell them apart. A value given on the command line wins. -->
+    <Upgrade Id="EA00C367-7270-4C50-9D8B-A7A5C88AD27F">
+      <UpgradeVersion Minimum="0.7.1" IncludeMinimum="yes" OnlyDetect="yes" Property="PDFCONTEXTMENURELEASE" />
+      <UpgradeVersion Minimum="0.4.0" IncludeMinimum="yes" OnlyDetect="yes" Property="IMAGECONTEXTMENURELEASE" />
+    </Upgrade>
+    <Property Id="INSTALLPDFCONTEXTMENU" Secure="yes" />
+    <Property Id="EXISTINGPDFCONTEXTMENU">
+      <RegistrySearch Id="PdfContextMenuSearch" Root="HKLM" Key="Software\Classes\SystemFileAssociations\.pdf\shell\PdfKub.Edit" Type="raw" />
+    </Property>
+    <SetProperty Id="INSTALLPDFCONTEXTMENU" Value="1" After="AppSearch" Sequence="first"
+        Condition="NOT INSTALLPDFCONTEXTMENU AND (NOT PDFCONTEXTMENURELEASE OR EXISTINGPDFCONTEXTMENU)" />
+    <Property Id="INSTALLIMAGECONTEXTMENU" Secure="yes" />
+    <Property Id="EXISTINGIMAGECONTEXTMENU">
+      <RegistrySearch Id="ImageContextMenuSearch" Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf" Type="raw" />
+    </Property>
+    <SetProperty Id="INSTALLIMAGECONTEXTMENU" Value="1" After="AppSearch" Sequence="first"
+        Condition="NOT INSTALLIMAGECONTEXTMENU AND (NOT IMAGECONTEXTMENURELEASE OR EXISTINGIMAGECONTEXTMENU)" />
     <!-- Command-line tools (pdfkub-cli: scripting and the MCP server): off by default, since the
          app doesn't need them and they are a second copy of the engine. A checkbox in the welcome
          dialog, or INSTALLCLI=1 on the msiexec command line; they also go on the system PATH. -->
@@ -108,38 +141,6 @@
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Capabilities" Name="ApplicationIcon" Value="[#PdfkubExe],0" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\PdfKub\Capabilities\FileAssociations" Name=".pdf" Value="PdfKub.Document" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\RegisteredApplications" Name="PdfKub" Value="Software\PdfKub\Capabilities" Type="string" />
-
-        <!-- Image context menu (#190): convert without changing image file defaults. -->
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpg\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpg\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpg\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpeg\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpeg\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpeg\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tif\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tif\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tif\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tiff\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tiff\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tiff\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gif\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gif\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gif\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.bmp\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.bmp\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.bmp\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jp2\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jp2\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jp2\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.j2k\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.j2k\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.j2k\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpx\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpx\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpx\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
       </Component>
 
       <!-- Shortcuts (#143) are plain links to pdfkub.exe, not advertised MSI shortcuts: advertised
@@ -173,6 +174,45 @@
         <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.pdf\shell\PdfKub.Edit" Name="Icon" Value="&quot;[#PdfkubExe]&quot;,0" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.pdf\shell\PdfKub.Edit" Name="MultiSelectModel" Value="Document" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.pdf\shell\PdfKub.Edit\command" Value="&quot;[#PdfkubExe]&quot; &quot;%1&quot;" Type="string" />
+      </Component>
+
+      <!-- Image context menu (#190): "Create PDF with PdfKub…" opens the DPI chooser, without
+           changing image file defaults. Its own component with an HKLM key path, so
+           INSTALLIMAGECONTEXTMENU=0 leaves it out and uninstall removes it. These rows were in
+           PdfkubApp up to 0.7.1; moving them is safe because MajorUpgrade removes the old version
+           before installing (afterInstallValidate), so no old row is left behind. -->
+      <Component Id="PdfkubImageContextMenu" Guid="1B783BF3-12DF-4588-AF80-E2CEA8BC1E5A"
+          Condition="INSTALLIMAGECONTEXTMENU = 1">
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpg\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpg\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpg\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpeg\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpeg\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpeg\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tif\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tif\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tif\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tiff\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tiff\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.tiff\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gif\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gif\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gif\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.bmp\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.bmp\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.bmp\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jp2\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jp2\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jp2\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.j2k\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.j2k\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.j2k\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpx\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpx\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.jpx\shell\PdfKub.CreatePdf\command" Value="&quot;[#PdfkubExe]&quot; --create-images &quot;%1&quot;" Type="string" />
       </Component>
       <!-- The embedded PDF icon's ISC notice and project licences travel with the binaries. -->
       <Component Id="PdfkubDocumentIconLicense" Guid="61EC7517-0229-48D9-9A3F-ADEEA138759E">

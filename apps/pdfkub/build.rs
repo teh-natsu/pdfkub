@@ -24,7 +24,8 @@ fn main() {
         .set_manifest(windows_manifest::WINDOWS_MANIFEST)
         .set("ProductName", "PdfKub")
         .set("FileDescription", "PdfKub PDF workbench")
-        .set("LegalCopyright", "Copyright (c) the PdfKub and PdfCraft contributors. MIT OR Apache-2.0.")
+        .set("CompanyName", "Nattapol Chaisri")
+        .set("LegalCopyright", "Copyright (c) 2026 Nattapol Chaisri and the PdfKub contributors; based on PdfCraft. MIT OR Apache-2.0.")
         .set("OriginalFilename", "pdfkub.exe")
         .set("InternalName", "pdfkub");
     if let Err(e) = res.compile() {

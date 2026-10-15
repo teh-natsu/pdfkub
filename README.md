@@ -115,7 +115,7 @@ cargo xtask ci                                  # ตรวจทุกอย่
 ## สัญญาอนุญาตและเครดิต
 
 PdfKub ใช้สัญญาอนุญาตคู่ [MIT](LICENSE-MIT) หรือ [Apache-2.0](LICENSE-APACHE) เลือกได้ตามต้องการ
-Copyright (c) 2026 Nattpol Chaisri and the PdfKub contributors
+Copyright (c) 2026 Nattapol Chaisri and the PdfKub contributors
 
 พัฒนาต่อจาก [PdfCraft](https://github.com/storytold/pdfcraft),
 Copyright (c) 2026 ArtCraft Team and the PdfCraft contributors ข้อความที่ต้องแสดงอยู่ใน [NOTICE](NOTICE)

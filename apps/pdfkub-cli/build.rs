@@ -15,7 +15,8 @@ fn main() {
     let mut res = winresource::WindowsResource::new();
     res.set("ProductName", "PdfKub")
         .set("FileDescription", "PdfKub command-line tool")
-        .set("LegalCopyright", "Copyright (c) the PdfCraft contributors. MIT OR Apache-2.0.")
+        .set("CompanyName", "Nattapol Chaisri")
+        .set("LegalCopyright", "Copyright (c) 2026 Nattapol Chaisri and the PdfKub contributors; based on PdfCraft. MIT OR Apache-2.0.")
         .set("OriginalFilename", "pdfkub-cli.exe")
         .set("InternalName", "pdfkub-cli");
     if let Err(e) = res.compile() {

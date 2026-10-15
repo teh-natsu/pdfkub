@@ -103,6 +103,22 @@ impl SigDraft {
         }
     }
 
+    /// Take back the last drawn stroke (and any dot-less empty one a bare click left behind it).
+    /// Returns whether a visible stroke was removed.
+    pub fn undo_stroke(&mut self) -> bool {
+        while let Some(s) = self.strokes.pop() {
+            if s.len() > 1 {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// The Draw tab is showing (not Type, Image or Scan).
+    fn draw_tab(&self) -> bool {
+        self.drawing && !self.image_mode && !self.scan_mode
+    }
+
     fn ready(&self) -> bool {
         if self.scan_mode {
             // A preview made while the frame or slider is still moving is not the result.
@@ -387,11 +403,18 @@ pub struct TypeBox {
     pub page: usize,
     pub at: [f64; 2],
     pub text: String,
+    pub size: f64,
     pub focus: bool,
 }
 
-/// The size Fill & Sign uses for typed text (Acrobat's default is 10 pt).
+/// The default size Fill & Sign uses for typed text.
 pub const TEXT_SIZE: f64 = 10.0;
+pub const MIN_TEXT_SIZE: f64 = 4.0;
+pub const MAX_TEXT_SIZE: f64 = 300.0;
+
+pub fn valid_text_size(size: f64) -> Option<f64> {
+    (size.is_finite() && (MIN_TEXT_SIZE..=MAX_TEXT_SIZE).contains(&size)).then_some(size)
+}
 
 fn to_user(xf: &PageXform, info: &DocInfo, page: usize, p: Pos2) -> [f64; 2] {
     let (vx, vy) = xf.screen_to_view(p);
@@ -404,10 +427,11 @@ fn new(page: usize, shape: Shape, contents: String, author: &str) -> Edit {
     Edit::AddAnnotation(NewAnnotation { page, shape, style, contents, author: author.to_string() })
 }
 
-/// A typewriter annotation sized to its text.
-pub fn typed(page: usize, at: [f64; 2], text: &str, author: &str) -> Edit {
-    let rect = crate::comments::text_box_rect(at, text, TEXT_SIZE);
-    new(page, Shape::Typewriter { rect, font_size: TEXT_SIZE }, text.to_string(), author)
+/// A typewriter annotation sized to its text, its displayed top-left at `at` on a page turned by
+/// `rotation` (its `/Rotate`).
+pub fn typed(page: usize, at: [f64; 2], text: &str, size: f64, rotation: i64, author: &str) -> Edit {
+    let rect = crate::comments::text_box_rect(at, text, size, rotation);
+    new(page, Shape::Typewriter { rect, font_size: size }, text.to_string(), author)
 }
 
 /// Place a saved signature (strokes normalised to a 0–1 box, y up) with its left edge at `at`,
@@ -595,6 +619,7 @@ pub(crate) fn page_input(
     page: usize,
     info: &DocInfo,
     tool: FillTool,
+    text_size: f64,
     view: &mut DocView,
     signature: Option<&SavedSig>,
     initials: Option<&SavedSig>,
@@ -625,15 +650,20 @@ pub(crate) fn page_input(
     if !resp.clicked() {
         return None;
     }
+    // Typed text starts a little above the click, as displayed.
+    let rotation = i64::from(p.rotation);
+    let top = pdfcraft_engine::displayed_offset(rotation, at, 0.0, text_size * 0.6);
     match tool {
         FillTool::Text => {
             // Clicking away from an open box commits it: the page sees this click before the box
             // sees its lost focus, so replacing the box first would drop what was typed.
-            let open = view.fill_text.replace(TypeBox { page, at: [at[0], at[1] + TEXT_SIZE * 0.6], text: String::new(), focus: true });
-            open.filter(|tb| !tb.text.trim().is_empty()).map(|tb| FillAction::Edit(Box::new(typed(tb.page, tb.at, tb.text.trim(), author))))
+            let open = view.fill_text.replace(TypeBox { page, at: top, text: String::new(), size: text_size, focus: true });
+            open.filter(|tb| !tb.text.trim().is_empty()).map(|tb| {
+                FillAction::Edit(Box::new(typed(tb.page, tb.at, tb.text.trim(), tb.size, crate::comments::page_rotation(info, tb.page), author)))
+            })
         }
         FillTool::Date => Some(match date_text {
-            Ok(text) => FillAction::Edit(Box::new(typed(page, [at[0], at[1] + TEXT_SIZE * 0.6], text, author))),
+            Ok(text) => FillAction::Edit(Box::new(typed(page, top, text, text_size, rotation, author))),
             Err(why) => FillAction::Refused(why.clone()),
         }),
         FillTool::Signature => match signature {
@@ -682,9 +712,9 @@ pub(crate) fn type_box(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
         ui.visuals_mut().text_cursor.stroke.color = crate::edit_text_ui::caret_color_on(Color32::WHITE);
         // Thai is embedded in Sarabun: preview it that way.
         let font = if pdfcraft_fonts::win_ansi_covers(&t.text) {
-            egui::FontId::proportional((TEXT_SIZE as f32 * zoom).max(8.0))
+            egui::FontId::proportional((t.size as f32 * zoom).max(8.0))
         } else {
-            crate::theme::sarabun((TEXT_SIZE as f32 * zoom).max(8.0), false)
+            crate::theme::sarabun((t.size as f32 * zoom).max(8.0), false)
         };
         // PdfKub: as wide as the text in the font shown (the edit's own margins, the caret and
         // room for the next letter included), so it never scrolls a word out of sight. An estimate
@@ -721,7 +751,7 @@ pub(crate) fn type_box(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
     if commit {
         let tb = view.fill_text.take()?;
         if !tb.text.trim().is_empty() {
-            return Some(typed(tb.page, tb.at, tb.text.trim(), author));
+            return Some(typed(tb.page, tb.at, tb.text.trim(), tb.size, crate::comments::page_rotation(info, tb.page), author));
         }
     }
     None
@@ -806,6 +836,11 @@ pub(crate) fn signature_pad(
         return (apply, cancel, false);
     }
     ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Draw your {what} below."), &[("what", what)])).color(t.text_muted));
+    // The dialog is modal, so ⌘Z / Ctrl+Z here can only mean the last stroke (the document's own
+    // undo is blocked while it is open).
+    if ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z)) {
+        d.undo_stroke();
+    }
     let strokes = &mut d.strokes;
     let (rect, resp) = ui.allocate_exact_size(vec2(460.0, 150.0), Sense::drag());
     let painter = ui.painter_at(rect);
@@ -1029,6 +1064,9 @@ fn pad_buttons(ui: &mut egui::Ui, d: &mut SigDraft) -> (bool, bool) {
     ui.add_space(10.0);
     let (mut apply, mut cancel) = (false, false);
     ui.horizontal(|ui| {
+        if d.draw_tab() && ui.add_enabled(!d.strokes.is_empty(), egui::Button::new(tl!("Undo"))).clicked() {
+            d.undo_stroke();
+        }
         if ui.button(tl!("Clear")).clicked() {
             d.strokes.clear();
             d.text.clear();
@@ -1214,6 +1252,18 @@ impl crate::PdfKubApp {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn undo_removes_the_last_stroke_and_skips_empty_ones() {
+        let mut d = super::SigDraft { drawing: true, ..Default::default() };
+        assert!(!d.undo_stroke());
+        d.strokes = vec![vec![[0.1, 0.1], [0.2, 0.2]], vec![[0.3, 0.3], [0.4, 0.4]], vec![[0.5, 0.5]], vec![]];
+        assert!(d.undo_stroke());
+        assert_eq!(d.strokes.len(), 1);
+        assert!(d.undo_stroke());
+        assert!(d.strokes.is_empty());
+        assert!(!d.undo_stroke());
+    }
+
     #[test]
     fn long_signature_previews_have_clear_margins() {
         for text in ["Alexandria Catherine Elizabeth Montgomery-Wellington", "Jg Jg Jg Jg Jg Jg Jg Jg Jg Jg Jg"] {

@@ -409,9 +409,12 @@ pub fn show(app: &mut crate::PdfKubApp, ui: &mut egui::Ui) {
                 match app.active {
                     None if app.combine_showing() => crate::combine_ui::page(app, ui),
                     None => crate::home::show(app, ui),
-                    // PdfKub: the document view can show two sides (split.rs).
-                    Some(_) if app.is_split() => crate::split::show(app, ui),
-                    Some(index) => crate::canvas::document_area(app, index, ui),
+                    Some(index) => match crate::compare_ui::side_by_side(app, index) {
+                        Some((old, new)) => crate::compare_ui::compare_area(app, old, new, ui),
+                        // PdfKub: the document view can show two sides (split.rs).
+                        None if app.is_split() => crate::split::show(app, ui),
+                        None => crate::canvas::document_area(app, index, ui),
+                    },
                 }
             }
             Panel::Tools => crate::panels::left_panel(app, ui),
@@ -452,6 +455,14 @@ fn panel_limits(panel: &Panel) -> PanelLimits {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lithuanian_translates_every_dynamic_panel_title() {
+        let lang = crate::i18n::Lang::from_code("lt").expect("Lithuanian is registered");
+        for panel in Panel::ALL {
+            assert_ne!(crate::i18n::tr(lang, panel.label()), panel.label(), "{} remains untranslated", panel.id());
+        }
+    }
 
     #[test]
     fn tools_side_moves_to_both_edges_and_survives_closed_restore() {
