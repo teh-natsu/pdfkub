@@ -61,7 +61,7 @@
          is removed. Releases from before a menu existed (the PDF one came in 0.7.1, the image one in
          0.4.0) never had the key, so updating from one of them counts as a first install; the
          OnlyDetect rows below tell them apart. A value given on the command line wins. -->
-    <Upgrade Id="EA00C367-7270-4C50-9D8B-A7A5C88AD27F">
+    <Upgrade Id="ED6C9569-1570-4C49-8150-04D46F4D986F">
       <UpgradeVersion Minimum="0.7.1" IncludeMinimum="yes" OnlyDetect="yes" Property="PDFCONTEXTMENURELEASE" />
       <UpgradeVersion Minimum="0.4.0" IncludeMinimum="yes" OnlyDetect="yes" Property="IMAGECONTEXTMENURELEASE" />
     </Upgrade>
@@ -181,7 +181,7 @@
            INSTALLIMAGECONTEXTMENU=0 leaves it out and uninstall removes it. These rows were in
            PdfkubApp up to 0.7.1; moving them is safe because MajorUpgrade removes the old version
            before installing (afterInstallValidate), so no old row is left behind. -->
-      <Component Id="PdfkubImageContextMenu" Guid="1B783BF3-12DF-4588-AF80-E2CEA8BC1E5A"
+      <Component Id="PdfkubImageContextMenu" Guid="A8FC9770-152D-4599-BD52-B659983007E6"
           Condition="INSTALLIMAGECONTEXTMENU = 1">
         <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf" Value="Create PDF with PdfKub…" Type="string" KeyPath="yes" />
         <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.png\shell\PdfKub.CreatePdf" Name="MultiSelectModel" Value="Single" Type="string" />
