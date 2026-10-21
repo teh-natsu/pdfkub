@@ -14,7 +14,7 @@ workspace = true
 pdfcraft-fonts = { workspace = true }
 ocrs = { version = "0.13.1", default-features = false, features = ["rten"] }
 # onnx_format: the Thai recogniser is PaddlePaddle's ONNX export, loaded as is.
-rten = { version = "0.26.0", default-features = false, features = ["rten_format", "onnx_format"] }
-rten-tensor = "0.26.0"
-rten-imageproc = "0.26.0"
+rten = { version = "0.27.0", default-features = false, features = ["rten_format", "onnx_format"] }
+rten-tensor = "0.27.0"
+rten-imageproc = "0.27.0"
 thiserror.workspace = true
