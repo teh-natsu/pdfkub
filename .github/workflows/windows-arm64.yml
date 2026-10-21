@@ -31,7 +31,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-pc-windows-msvc
@@ -46,7 +46,7 @@ jobs:
         env:
           DIST: ${{ github.workspace }}\dist\arm64
         run: ./packaging/windows/package.ps1 -Arch arm64
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pdfkub-windows-arm64
           path: dist/arm64/*
@@ -59,7 +59,7 @@ jobs:
     runs-on: windows-11-arm
     timeout-minutes: 30
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: pdfkub-windows-arm64
           path: dist
@@ -146,7 +146,7 @@ jobs:
     runs-on: windows-11-arm
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
