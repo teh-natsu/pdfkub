@@ -15,6 +15,7 @@
 	Zoom	Thu phóng
 	Actual size	Kích thước thực
 	Zoom to page level	Thu phóng vừa trang
+	Zoom — type a percentage and press Enter	Thu phóng — nhập tỷ lệ phần trăm rồi nhấn Enter
 	Fit to width	Vừa chiều rộng
 	Display theme	Chủ đề hiển thị
 	Side panels	Bảng bên
@@ -1955,6 +1956,7 @@ comment menu	Edit	Sửa
 	Couldn't use the photo: {e}	Không thể dùng ảnh: {e}
 	Couldn't use {name}: {e}	Không thể dùng {name}: {e}
 	Couldn't write {name}: {e}	Không thể ghi {name}: {e}
+	the name is not a plain file name	tên không phải là tên tệp đơn thuần
 	Couldn't write {path}: {e}	Không thể ghi {path}: {e}
 	Create link	Tạo liên kết
 	Created 1 link	Đã tạo 1 liên kết
@@ -2689,3 +2691,7 @@ key	Space	Space
 	Move to the other side	Chuyển sang bên kia
 	Split right	Chia sang phải
 	Thai and other scripts are drawn with an embedded font: the one you pick, or Sarabun.	Tiếng Thái và các hệ chữ khác được vẽ bằng phông chữ nhúng: phông bạn chọn hoặc Sarabun.
+
+# Historical snapshot notice bar (View signed version / View revision).
+	You are viewing the signed version of “{from}” (revision {rev}). It is a snapshot: changes here won't affect the original.	Bạn đang xem phiên bản đã ký của “{from}” (bản sửa đổi {rev}). Đây là ảnh nhanh: các thay đổi ở đây không được áp dụng đến bản gốc.
+	You are viewing revision {rev} of “{from}”. It is a snapshot: changes here won't affect the original.	Bạn đang xem bản sửa đổi {rev} của “{from}”. Đây là ảnh nhanh: các thay đổi ở đây không được áp dụng đến bản gốc.

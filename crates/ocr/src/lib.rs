@@ -455,7 +455,10 @@ const EMBED_DESCENT: f64 = 0.232;
 /// [`text_layer`] where `encoded[i]`, when present, draws word `i` with the embedded font
 /// `font` (a Type0 font with 2-byte codes, e.g. Sarabun for Thai) instead of Helvetica.
 pub fn text_layer_with(words: &[PlacedWord], font: &str, encoded: &[Option<EncodedWord>]) -> Vec<u8> {
-    let mut out = b"/OCR BMC\nBT\n3 Tr\n/PCHelv 1 Tf\n".to_vec();
+    // `3 Tr` and the font are graphics state, which `ET` doesn't reset: without `q … Q` they
+    // would stay set for every later content stream on the page, so text added after OCR (a
+    // header or footer) drew invisibly (#3029).
+    let mut out = b"/OCR BMC\nq\nBT\n3 Tr\n/PCHelv 1 Tf\n".to_vec();
     for (i, w) in words.iter().enumerate() {
         if let Some(Some(e)) = encoded.get(i)
             && !font.is_empty()
@@ -490,7 +493,7 @@ pub fn text_layer_with(words: &[PlacedWord], font: &str, encoded: &[Option<Encod
         out.extend(pdfcraft_fonts::literal(&pdfcraft_fonts::win_ansi(&w.text)));
         out.extend_from_slice(b" Tj\n");
     }
-    out.extend_from_slice(b"ET\nEMC\n");
+    out.extend_from_slice(b"ET\nQ\nEMC\n");
     out
 }
 
@@ -525,6 +528,26 @@ mod tests {
         // "Hi" has no descender: its box spans the cap height, from the baseline up.
         assert!(s.contains(&format!("{} 0 0 {} 10 20 Tm (Hi) Tj", num(30.0 / width), num(9.3 / CAP_HEIGHT))), "{s}");
         assert!(s.starts_with("/OCR BMC") && s.ends_with("EMC\n"));
+    }
+
+    /// #3029: the layer's invisible rendering mode and font end with the layer. Every operator
+    /// that sets them sits inside a `q … Q` pair that the layer closes itself, so content drawn
+    /// after it on the page starts from the graphics state it had before.
+    #[test]
+    fn the_layer_restores_the_graphics_state_it_changes() {
+        let w = PlacedWord { text: "Hi".into(), origin: [10.0, 20.0], across: [30.0, 0.0], up: [0.0, 9.3] };
+        let s = String::from_utf8(text_layer(&[w])).unwrap();
+        let mut depth = 0_i32;
+        for token in s.split_ascii_whitespace() {
+            match token {
+                "q" => depth += 1,
+                "Q" => depth -= 1,
+                "Tr" | "Tf" | "Tm" => assert!(depth > 0, "`{token}` outside q … Q in {s:?}"),
+                _ => {}
+            }
+            assert!(depth >= 0, "unbalanced Q in {s:?}");
+        }
+        assert_eq!(depth, 0, "the layer leaves a q open: {s:?}");
     }
 
     /// A word box is tight around the ink, so the text's size and baseline come from the letters:

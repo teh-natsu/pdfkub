@@ -138,6 +138,7 @@ comment menu	Edit	సవరించు
 	Next page	తదుపరి పేజీ
 	Previous page	మునుపటి పేజీ
 	Current page — type a page number or label (such as iv) and press Enter	ప్రస్తుత పేజీ — పేజీ సంఖ్యను లేదా లేబుల్‌ను (iv వంటిది) టైప్ చేసి Enter నొక్కండి
+	Zoom — type a percentage and press Enter	జూమ్ — శాతాన్ని టైప్ చేసి Enter నొక్కండి
 	Welcome to PdfKub	PdfKubకు స్వాగతం
 	A PDF workbench — local, private, and scriptable.	PDF వర్క్‌బెంచ్ — మీ కంప్యూటర్‌లోనే నడుస్తుంది, గోప్యంగా ఉంటుంది, స్క్రిప్ట్‌లతో ఆటోమేట్ చేయవచ్చు.
 	Recommended tools	సిఫార్సు చేసిన సాధనాలు
@@ -1613,6 +1614,7 @@ action wizard	Start	ప్రారంభించు
 	Couldn't use {name}: {e}	{name}ను ఉపయోగించడం సాధ్యం కాలేదు: {e}
 	Couldn't extract pages: {e}	పేజీలను వేరు తీయడం సాధ్యం కాలేదు: {e}
 	Couldn't write {name}: {e}	{name}ను రాయడం సాధ్యం కాలేదు: {e}
+	the name is not a plain file name	పేరు సాధారణ ఫైల్ పేరు కాదు
 	Wrote 1 file to {dir}	{dir}లో 1 ఫైల్ సేవ్ చేయబడింది
 	Wrote {n} files to {dir}	{dir}లో {n} ఫైల్‌లు సేవ్ చేయబడ్డాయి
 	No pages match those choices	ఆ ఎంపికలకు సరిపోయే పేజీలు ఏవీ లేవు

@@ -131,6 +131,11 @@
              Resource 1 is the app's red panda; resource 2 is the PDF document (build.rs). -->
         <RegistryValue Root="HKLM" Key="Software\Classes\PdfKub.Document\DefaultIcon" Value="&quot;[#PdfkubExe]&quot;,-2" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\PdfKub.Document\shell\open\command" Value="&quot;[#PdfkubExe]&quot; &quot;%1&quot;" Type="string" />
+        <!-- No overlay on thumbnails and in the preview pane: without TypeOverlay, Windows paints
+             the default program's icon (the lion) over the lower-right corner of every PDF
+             thumbnail, covering part of the page. An empty string means none ("Thumbnail
+             Handlers", Microsoft Learn). -->
+        <RegistryValue Root="HKLM" Key="Software\Classes\PdfKub.Document" Name="TypeOverlay" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\.pdf\OpenWithProgids" Name="PdfKub.Document" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\pdfkub.exe" Name="FriendlyAppName" Value="PdfKub" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\pdfkub.exe\DefaultIcon" Value="&quot;[#PdfkubExe]&quot;,-2" Type="string" />
