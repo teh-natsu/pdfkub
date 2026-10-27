@@ -12,6 +12,9 @@
   PdfKub arrive on its command line.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <?ifndef HasCraftFontLicences ?>
+  <?define HasCraftFontLicences=0 ?>
+  <?endif ?>
   <Package
       Name="PdfKub"
       Manufacturer="Nattapol Chaisri"
@@ -90,6 +93,9 @@
     <StandardDirectory Id="DesktopFolder" />
 
     <Feature Id="Main" Title="PdfKub" Level="1">
+      <?if $(var.HasCraftFontLicences) = 1 ?>
+      <ComponentGroupRef Id="CraftFontLicences" />
+      <?endif ?>
       <ComponentGroupRef Id="PdfkubFiles" />
 <?ifdef ModelsDir?>
       <ComponentGroupRef Id="PdfkubModels" />
@@ -114,6 +120,11 @@
 <?endif?>
 
   <Fragment>
+    <?if $(var.HasCraftFontLicences) = 1 ?>
+    <ComponentGroup Id="CraftFontLicences" Directory="INSTALLFOLDER">
+      <Files Include="$(var.DocsDir)\**" />
+    </ComponentGroup>
+    <?endif ?>
     <ComponentGroup Id="PdfkubFiles" Directory="INSTALLFOLDER">
       <Component Id="PdfkubApp" Guid="132633F9-08D3-466F-93B0-6B23EE26D14F">
         <File Id="PdfkubExe" Source="$(var.BinDir)\pdfkub.exe" KeyPath="yes" />

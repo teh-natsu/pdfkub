@@ -2,7 +2,7 @@
 
 PDF stream filters: the decoders and encoders behind `/Filter` and `/DecodeParms`.
 
-- **Layer:** L0, standalone. No dependency on any other PdfKub crate. `cos` depends on it (architecture §3 rule 3).
+- **Layer:** L0, standalone. No dependency on any other PdfCraft crate. `cos` depends on it (architecture §3 rule 3).
 - **Licence:** MIT OR Apache-2.0. Clean-room: written from ISO 32000-2 §7.4, RFC 1950/1951 (through `flate2` with the pure-Rust `miniz_oxide` backend), TIFF 6.0 §14 (predictor 2) and RFC 2083 §6 (PNG filters).
 - `#![forbid(unsafe_code)]`. Builds for `wasm32-unknown-unknown`.
 
@@ -17,14 +17,17 @@ pub struct Params { predictor, colors, bits_per_component, columns, early_change
 pub enum FilterError { Corrupt { filter, detail }, LimitExceeded(usize), Unsupported(String) }
 
 decode(chain, data, max_output) -> Result<Vec<u8>, FilterError>
+decode_counted(chain, data, max_output) -> Result<(Vec<u8>, usize /*decoded*/), (FilterError, usize /*decoded*/)>
 decode_tolerant(chain, data, max_output) -> Result<(Vec<u8>, bool /*partial*/), FilterError>
+decode_tolerant_counted(chain, data, max_output) -> Result<(Vec<u8>, bool /*partial*/, usize /*decoded*/), (FilterError, usize /*decoded*/)>
 encode(filter, params, data) -> Result<Vec<u8>, FilterError>
 encode_flate(data) -> Vec<u8>   // zlib, level 6
 ```
 
 - `chain` is applied first to last, as in a `/Filter` array.
-- Image codecs (DCT, JPX, JBIG2, CCITT), `Crypt` and unknown filters anywhere in a chain give `Unsupported`: callers keep such data encoded. Decryption belongs to `crypt`.
+- Image codecs (DCT, JPX, JBIG2, CCITT), `Crypt` and unknown filters anywhere in a chain give `Unsupported`: callers keep such data encoded. So does a chain longer than `MAX_CHAIN` (8) filters, before any stage runs. Decryption belongs to `crypt`.
 - `max_output` bounds every intermediate buffer (including the pre-predictor buffer) and gives `LimitExceeded(max_output)`. This also holds when Flate retries raw deflate after a misleading zlib header, in both strict and tolerant decoding.
+- `decode_counted` and `decode_tolerant_counted` are for a caller charging a budget (`pdfcraft_cos::DecodeBudget`). `max_output` bounds all stages together (each stage gets what the earlier ones left), and they give the bytes every stage that ran decoded, on success and on failure. A stage's output counts as its decoder produced it, before a predictor or a later stage shrinks it, and a failed decode pays for what it decoded first.
 - `decode_tolerant` turns `Corrupt` into "what was decoded so far" plus `partial = true`, then runs the rest of the chain on it (predictors are applied to partial output too). `LimitExceeded` and `Unsupported` are still errors.
 
 ## Behaviour

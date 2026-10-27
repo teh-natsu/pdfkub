@@ -259,14 +259,14 @@ pub fn show(app: &mut PdfKubApp, ui: &mut egui::Ui) {
         if !focused {
             // Over the passive side's pages: a click gives this side focus instead of acting on
             // the page, and the wheel still scrolls it.
-            let catcher = ui.interact(body, ui.id().with(("split-focus", pane.slot())), Sense::click_and_drag());
+            let catcher = ui.interact(body, ui.scope_id().with(("split-focus", pane.slot())), Sense::click_and_drag());
             if (catcher.clicked() || catcher.drag_started()) && i < app.views.len() {
                 app.active = Some(i);
             }
         }
     }
 
-    let handle = ui.interact(divider, ui.id().with("split-divider"), Sense::drag());
+    let handle = ui.interact(divider, ui.scope_id().with("split-divider"), Sense::drag());
     if handle.hovered() || handle.dragged() {
         ui.ctx().set_cursor_icon(CursorIcon::ResizeHorizontal);
     }
@@ -380,7 +380,7 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
                         let file = (name != doc.name).then_some(doc.name.as_str());
                         let resp = crate::chrome::tab(
                             ui,
-                            ui.id().with(("split-tab", uid)),
+                            ui.scope_id().with(("split-tab", uid)),
                             t,
                             "file-text",
                             &name,

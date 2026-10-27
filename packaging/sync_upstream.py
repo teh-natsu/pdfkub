@@ -44,6 +44,8 @@ PROTECTED = [
     "based on PdfCraft",
     "PdfCraft contributors",
     "PdfCraft by the ArtCraft team",
+    # The marker on upstream's patches in vendor/ (never renamed), which tests look for.
+    "PdfCraft patch",
     "pdfcraft*",
     "`pdfcraft-`",
     '"pdfcraft-"',
@@ -181,8 +183,13 @@ def refresh_attribution():
     if not out.endswith("\n"):
         out += "\n"
     open(path, "w", encoding="utf-8", newline="\n").write(out)
-    md = render_attribution(tomllib.loads(out))
-    open(os.path.join(ROOT, "ATTRIBUTION.md"), "w", encoding="utf-8", newline="\n").write(md)
+    # xtask's own rendering when Rust is installed, since it is what `cargo xtask assets` checks;
+    # the copy here only when it isn't.
+    try:
+        subprocess.run(["cargo", "xtask", "assets", "--write"], cwd=ROOT, check=True, capture_output=True)
+    except (OSError, subprocess.CalledProcessError):
+        md = render_attribution(tomllib.loads(out))
+        open(os.path.join(ROOT, "ATTRIBUTION.md"), "w", encoding="utf-8", newline="\n").write(md)
     return dropped, rehashed
 
 

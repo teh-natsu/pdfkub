@@ -48,6 +48,7 @@ modules:
     build-commands:
       - cargo --offline build --release --locked -p pdfkub
       - install -Dm755 target/release/pdfkub /app/bin/pdfkub
+      - install -Dm644 NOTICE /app/share/doc/pdfkub/NOTICE
       - install -Dm644 packaging/linux/io.github.teh_natsu.pdfkub.desktop /app/share/applications/io.github.teh_natsu.pdfkub.desktop
       - install -Dm644 packaging/linux/io.github.teh_natsu.pdfkub.mime.xml /app/share/mime/packages/io.github.teh_natsu.pdfkub.xml
       - mkdir -p /app/share/icons && cp -R assets/app-icon/hicolor /app/share/icons/
