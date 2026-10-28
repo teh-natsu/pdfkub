@@ -11,9 +11,9 @@ workspace = true
 [dependencies]
 pdfcraft-cos = { workspace = true }
 # Glyph outlines of the bundled script font (typed signatures); already in the tree via egui.
-skrifa = "0.44"
+skrifa = "0.47"
 # Shapes text written into PDFs: Thai marks and ligatures in embedded fonts, Arabic joining;
 # already in the tree via egui, on the same read-fonts.
-harfrust = "0.12"
+harfrust = "0.13"
 thiserror = { workspace = true }
 unicode-bidi = "0.3"
