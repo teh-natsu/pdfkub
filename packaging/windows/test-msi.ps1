@@ -38,11 +38,41 @@ function Assert-NoRow([string] $Sql, [string] $What) {
   } finally { [void] $view.Close() }
 }
 
-# The shared compiled contract covers both scopes, duplicate guards and safe maintenance.
-# Keep it in a separate process because Windows Installer permits one session per process.
-& (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'check-install-policy.ps1') -MsiPath $Path
-if ($LASTEXITCODE -ne 0) { throw 'Dual-scope installer contract failed.' }
+# Test the compiled condition with Windows Installer's evaluator, in a restricted session that
+# cannot change machine state. Normal installs/repairs work, per-user overrides fail, and removal
+# of an older incorrectly scoped installation remains possible (#305).
+$scopeMessage = 'PdfKub must be installed for all users. Run setup with administrator privileges and ALLUSERS=1; per-user installation is not supported.'
+$scopeCondition = Read-Row ('SELECT `Condition` FROM `LaunchCondition` WHERE `Description` = ''' + $scopeMessage + '''') 1
 $Installer.UILevel = 2
+$session = $null
+try {
+  $session = $Installer.OpenPackage((Resolve-Path -LiteralPath $Path).Path, 1)
+  foreach ($case in @(
+      @('machine install', '1', '', '', '', 1),
+      @('machine repair', '1', '', '1', '', 1),
+      @('forced per-user install', '2', '1', '', '', 0),
+      @('empty ALLUSERS', '', '', '', '', 0),
+      @('resolved per-user install', '', '1', '', '', 0),
+      @('forced per-user repair', '2', '1', '1', '', 0),
+      @('machine uninstall', '1', '', '1', 'ALL', 1),
+      @('legacy per-user uninstall', '', '1', '1', 'ALL', 1))) {
+    $session.Property('ALLUSERS') = $case[1]
+    $session.Property('MSIINSTALLPERUSER') = $case[2]
+    $session.Property('Installed') = $case[3]
+    $session.Property('REMOVE') = $case[4]
+    Assert-Equal ($session.EvaluateCondition($scopeCondition[0])) $case[5] $case[0]
+  }
+} finally {
+  if ($session) { [void] [Runtime.InteropServices.Marshal]::FinalReleaseComObject($session) }
+}
+foreach ($sequence in @('InstallUISequence', 'InstallExecuteSequence')) {
+  $launch = Read-Row ('SELECT `Condition`, `Sequence` FROM `' + $sequence + '` WHERE `Action` = ''LaunchConditions''') 2
+  Assert-Equal $launch[0] '' "$sequence launch conditions are unconditional"
+  $cost = Read-Row ('SELECT `Sequence` FROM `' + $sequence + '` WHERE `Action` = ''CostInitialize''') 1
+  if ([int] $launch[1] -le 0 -or [int] $launch[1] -ge [int] $cost[0]) {
+    throw "$sequence must reject per-user overrides before costing"
+  }
+}
 $manufacturer = Read-Row 'SELECT `Value` FROM `Property` WHERE `Property` = ''Manufacturer''' 1
 Assert-Equal $manufacturer[0] 'Nattapol Chaisri' 'MSI manufacturer'
 
@@ -158,7 +188,7 @@ Assert-Equal $cliBox[1] 'INSTALLCLI' 'Welcome command-line property'
 $app = Read-Row 'SELECT `KeyPath` FROM `Component` WHERE `Component` = ''PdfkubApp''' 1
 Assert-Equal $app[0] 'PdfkubExe' 'Shortcut executable key path'
 $scope = Read-Row 'SELECT `Value` FROM `Property` WHERE `Property` = ''ALLUSERS''' 1
-Assert-Equal $scope[0] '2' 'Dual-scope shortcut package'
+Assert-Equal $scope[0] '1' 'Per-machine shortcut scope'
 
 # Each File Explorer menu remembers whether it was installed by finding its key path in HKLM, in the
 # package's own registry view (64-bit for x64 and arm64). Only a release that offered the menu can
@@ -166,22 +196,12 @@ Assert-Equal $scope[0] '2' 'Dual-scope shortcut package'
 $upgradeCode = Read-Row 'SELECT `Value` FROM `Property` WHERE `Property` = ''UpgradeCode''' 1
 $view64 = $Database.SummaryInformation(0).Property(7) -notmatch '^Intel;'
 function Assert-MenuSearch([string] $Found, [string] $Key, [string] $Release, [string] $Since, [string] $What) {
-  foreach ($context in @(@('M', '2'), @('U', '1'))) {
-    $cache = ''
-    $loaders = $Database.OpenView('SELECT `Action`, `Target` FROM `CustomAction` WHERE `Source` = ''' + $Found + '''')
-    try {
-      [void]$loaders.Execute()
-      while ($row = $loaders.Fetch()) {
-        if ($row.StringData(1) -match ('^CraftLoadOption[0-9]+' + $context[0] + '$')) { $cache = $row.StringData(2).Trim('[]') }
-      }
-    } finally { [void]$loaders.Close() }
-    if (-not $cache) { throw "$What has no context-specific loader." }
-    $search = Read-Row ('SELECT `Root`, `Key`, `Name`, `Type` FROM `RegLocator`, `AppSearch` WHERE `AppSearch`.`Signature_` = `RegLocator`.`Signature_` AND `AppSearch`.`Property` = ''' + $cache + '''') 4
-    Assert-Equal $search[0] $context[1] "$What context $($context[0]) search root"
-    Assert-Equal $search[1] $Key "$What search key"
-    Assert-Equal $search[2] '' "$What search reads the default value"
-    Assert-Equal ([int] $search[3]) $(if ($view64) { 18 } else { 2 }) "$What search type"
-  }
+  $search = Read-Row ('SELECT `Root`, `Key`, `Name`, `Type` FROM `RegLocator`, `AppSearch` WHERE `AppSearch`.`Signature_` = `RegLocator`.`Signature_` AND `AppSearch`.`Property` = ''' + $Found + '''') 4
+  Assert-Equal $search[0] '2' "$What search HKLM root"
+  Assert-Equal $search[1] $Key "$What search key"
+  Assert-Equal $search[2] '' "$What search reads the default value"
+  # msidbLocatorTypeRawValue (2), plus msidbLocatorType64bit (16) in a 64-bit package.
+  Assert-Equal ([int] $search[3]) $(if ($view64) { 18 } else { 2 }) "$What search type"
   $upgrade = Read-Row ('SELECT `UpgradeCode`, `VersionMin`, `VersionMax`, `Attributes` FROM `Upgrade` WHERE `ActionProperty` = ''' + $Release + '''') 4
   Assert-Equal $upgrade[0] $upgradeCode[0] "$What release detection upgrade code"
   Assert-Equal $upgrade[1] $Since "$What release detection minimum"
@@ -208,7 +228,7 @@ foreach ($ext in @('png', 'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'bmp', 'jp2', 'j2
   $menu = Read-Row ('SELECT `Value`, `Component_`, `Root` FROM `Registry` WHERE `Key` = ''' + $key + ''' AND `Name` IS NULL') 3
   Assert-Equal $menu[0] 'Create PDF with PdfKub…' "$ext context menu label"
   Assert-Equal $menu[1] 'PdfkubImageContextMenu' "$ext context menu component"
-  Assert-Equal $menu[2] '-1' "$ext context menu context-sensitive root"
+  Assert-Equal $menu[2] '2' "$ext context menu HKLM root"
   $command = Read-Row ('SELECT `Value`, `Component_` FROM `Registry` WHERE `Key` = ''' + $key + '\command''') 2
   Assert-Equal $command[0] '"[#PdfkubExe]" --create-images "%1"' "$ext context menu command"
   Assert-Equal $command[1] 'PdfkubImageContextMenu' "$ext context menu command component"
@@ -241,7 +261,7 @@ $pdfKey = 'Software\Classes\SystemFileAssociations\.pdf\shell\PdfKub.Edit'
 $pdfMenu = Read-Row ('SELECT `Registry`, `Value`, `Component_`, `Root` FROM `Registry` WHERE `Key` = ''' + $pdfKey + ''' AND `Name` IS NULL') 4
 Assert-Equal $pdfMenu[1] 'Edit with PdfKub' 'PDF context menu label'
 Assert-Equal $pdfMenu[2] 'PdfkubPdfContextMenu' 'PDF context menu component'
-Assert-Equal $pdfMenu[3] '-1' 'PDF context menu context-sensitive root'
+Assert-Equal $pdfMenu[3] '2' 'PDF context menu HKLM root'
 foreach ($value in @(@('Icon', '"[#PdfkubExe]",0'), @('MultiSelectModel', 'Document'))) {
   $row = Read-Row ('SELECT `Value`, `Component_` FROM `Registry` WHERE `Key` = ''' + $pdfKey + ''' AND `Name` = ''' + $value[0] + '''') 2
   Assert-Equal $row[0] $value[1] "PDF context menu $($value[0])"
@@ -283,15 +303,16 @@ $modelsDir = Read-Row 'SELECT `Directory_Parent`, `DefaultDir` FROM `Directory` 
 Assert-Equal $modelsDir[0] 'INSTALLFOLDER' 'OCR models folder parent'
 # DefaultDir is `models`, or `SHORT|models` with a generated 8.3 name.
 if ($modelsDir[1] -notmatch '(^|\|)models$') { throw "OCR models folder name: '$($modelsDir[1])'" }
-$modelFiles = 0
-$thaiModel = $false
+$modelFiles = @()
 $view = $Database.OpenView('SELECT `File`.`FileName` FROM `File`, `Component` WHERE `File`.`Component_` = `Component`.`Component` AND `Component`.`Directory_` = ''ModelsFolder''')
 try {
   [void] $view.Execute()
-  while ($record = $view.Fetch()) { if ($record.StringData(1) -match '\.rten$') { $modelFiles++ }; if ($record.StringData(1) -match 'thai-recognition\.onnx$') { $thaiModel = $true } }
+  # FileName can contain a generated 8.3 name before the long name: SHORT|long.
+  while ($record = $view.Fetch()) { $modelFiles += ($record.StringData(1) -split '\|')[-1] }
 } finally { [void] $view.Close() }
-if ($modelFiles -lt 2) { throw "expected the OCR models (*.rten) in models\, found $modelFiles" }
-if (-not $thaiModel) { throw "expected the Thai OCR model (thai-recognition.onnx) in models\" }
+foreach ($model in @('text-detection.onnx', 'text-recognition.onnx', 'thai-recognition.onnx', 'thai-recognition.yml')) {
+  Assert-Equal (@($modelFiles | Where-Object { $_ -ceq $model }).Count) 1 "OCR model $model in models\"
+}
 $rm = Read-Row 'SELECT `Dialog` FROM `Dialog` WHERE `Dialog` = ''MsiRMFilesInUse''' 1
 Assert-Equal $rm[0] 'MsiRMFilesInUse' 'Files-in-use dialog'
 [void] [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Database)
