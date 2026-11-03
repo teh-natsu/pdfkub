@@ -380,18 +380,20 @@ fn tab_row(app: &mut PdfKubApp, ui: &mut egui::Ui, pane: Pane, focused: bool, t:
                         let file = (name != doc.name).then_some(doc.name.as_str());
                         let resp = crate::chrome::tab(
                             ui,
-                            ui.scope_id().with(("split-tab", uid)),
-                            t,
-                            "file-text",
-                            &name,
-                            file,
-                            dirty,
-                            shown == Some(i),
+                            crate::chrome::TabSpec {
+                                id: ui.scope_id().with(("split-tab", uid)),
+                                theme: t,
+                                icon: "file-text",
+                                name: &name,
+                                file,
+                                dirty,
+                                active: shown == Some(i),
+                                index: i,
+                                cap: None,
+                                height: crate::chrome::TAB_HEIGHT,
+                                draggable: true,
+                            },
                             &mut close,
-                            i,
-                            None,
-                            crate::chrome::TAB_HEIGHT,
-                            true,
                         );
                         if resp.drag_started() {
                             app.split.dragging = Some(uid);

@@ -1,5 +1,5 @@
 use super::layout::norm;
-use super::*;
+use super::{Content, MarkKind, ObjRef, Std14};
 
 pub(super) const TAG: &str = "Added";
 
@@ -106,7 +106,17 @@ pub struct AddedText {
     pub char_spacing: f64,
     /// PdfKub: an embedded TrueType face (any script); `None` draws with the standard font
     /// `family`, or with the bundled Sarabun when the text needs characters outside WinAnsi (Thai).
-    pub font: Option<EmbedFace>,
+    pub font: Option<pdfcraft_fonts::EmbedFace>,
+    /// Paragraphs (lines typed with Enter) aligned other than [`AddedText::align`], by index;
+    /// `None` and paragraphs past the end follow `align` ([`crate::paragraph_align`]).
+    pub aligns: Vec<Option<Align>>,
+}
+
+impl AddedText {
+    /// Paragraph `i`'s alignment.
+    pub fn paragraph_align(&self, i: usize) -> Align {
+        crate::paragraph_align::align_of(&self.aligns, i, self.align)
+    }
 }
 
 impl Default for AddedText {
@@ -120,6 +130,7 @@ impl Default for AddedText {
             size: 12.0,
             color: [0.0; 3],
             align: Align::Left,
+            aligns: Vec::new(),
             char_spacing: 0.0,
             font: None,
         }

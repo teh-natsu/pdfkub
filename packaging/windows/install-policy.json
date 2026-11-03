@@ -1,0 +1,329 @@
+{
+  "id": "pdfkub",
+  "name": "PdfKub",
+  "upgradeCode": "EA00C367-7270-4C50-9D8B-A7A5C88AD27F",
+  "sources": [
+    "pdfkub.wxs",
+    "installer-ui.wxs"
+  ],
+  "icon": "assets/app-icon/pdfkub.ico",
+  "localization": [],
+  "extensions": [],
+  "payloads": [
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+    "LICENSE-document.txt",
+    "NOTICE",
+    "pdfkub-cli.exe",
+    "pdfkub.exe"
+  ],
+  "registry": [
+    [
+      "-1",
+      "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\pdfkub.exe",
+      "",
+      "[#PdfkubExe]"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\PdfKub.Document",
+      "",
+      "PDF Document"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\PdfKub.Document\\DefaultIcon",
+      "",
+      "\"[#PdfkubExe]\",-2"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\PdfKub.Document\\shell\\open\\command",
+      "",
+      "\"[#PdfkubExe]\" \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\PdfKub.Document",
+      "TypeOverlay",
+      ""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\.pdf\\OpenWithProgids",
+      "PdfKub.Document",
+      ""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\pdfkub.exe",
+      "FriendlyAppName",
+      "PdfKub"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\pdfkub.exe\\DefaultIcon",
+      "",
+      "\"[#PdfkubExe]\",-2"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\pdfkub.exe\\SupportedTypes",
+      ".pdf",
+      ""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\pdfkub.exe\\shell\\open\\command",
+      "",
+      "\"[#PdfkubExe]\" \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\PdfKub\\Capabilities",
+      "ApplicationName",
+      "PdfKub"
+    ],
+    [
+      "-1",
+      "Software\\PdfKub\\Capabilities",
+      "ApplicationDescription",
+      "Open-source PDF workbench"
+    ],
+    [
+      "-1",
+      "Software\\PdfKub\\Capabilities",
+      "ApplicationIcon",
+      "[#PdfkubExe],0"
+    ],
+    [
+      "-1",
+      "Software\\PdfKub\\Capabilities\\FileAssociations",
+      ".pdf",
+      "PdfKub.Document"
+    ],
+    [
+      "-1",
+      "Software\\RegisteredApplications",
+      "PdfKub",
+      "Software\\PdfKub\\Capabilities"
+    ],
+    [
+      "-1",
+      "Software\\PdfKub\\Shortcuts",
+      "StartMenu",
+      "#1"
+    ],
+    [
+      "-1",
+      "Software\\PdfKub\\Shortcuts",
+      "Desktop",
+      "#1"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.pdf\\shell\\PdfKub.Edit",
+      "",
+      "Edit with PdfKub"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.pdf\\shell\\PdfKub.Edit",
+      "Icon",
+      "\"[#PdfkubExe]\",0"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.pdf\\shell\\PdfKub.Edit",
+      "MultiSelectModel",
+      "Document"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.pdf\\shell\\PdfKub.Edit\\command",
+      "",
+      "\"[#PdfkubExe]\" \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.png\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.png\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.png\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpg\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpg\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpg\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpeg\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpeg\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpeg\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.tif\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.tif\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.tif\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.tiff\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.tiff\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.tiff\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.gif\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.gif\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.gif\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.bmp\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.bmp\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.bmp\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jp2\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jp2\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jp2\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.j2k\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.j2k\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.j2k\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpx\\shell\\PdfKub.CreatePdf",
+      "",
+      "Create PDF with PdfKub\u2026"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpx\\shell\\PdfKub.CreatePdf",
+      "MultiSelectModel",
+      "Single"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\SystemFileAssociations\\.jpx\\shell\\PdfKub.CreatePdf\\command",
+      "",
+      "\"[#PdfkubExe]\" --create-images \"%1\""
+    ]
+  ],
+  "mode": "dualScope"
+}

@@ -13,6 +13,7 @@ Third-party material
 This product bundles third-party material under its own licenses, listed below. The per-file
 list (author, source, license) is in ATTRIBUTION.md.
 
+- Lucide icons (assets/icons/*.svg) — ISC and MIT licences (Feather-derived icons). See assets/icons/LICENSE-lucide.txt.
 - Lucide icons (assets/icons/*.svg) — ISC License. See assets/icons/LICENSE-lucide.txt.
 - Anuphan typeface (assets/fonts/Anuphan-*.ttf), Copyright 2019 The Anuphan Project Authors, static instances
   of the variable font — SIL Open Font License 1.1. See assets/fonts/OFL-Anuphan.txt.

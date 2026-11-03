@@ -1,6 +1,6 @@
 use super::files::{CombineFile, CombineView, Lock, RowAction};
 use super::table::{TableEvents, table};
-use super::*;
+use super::{Align, BTreeSet, CornerRadius, ERROR, Layout, Modifiers, PdfKubApp, Rect, Stroke, Tokens, icons, theme, vec2, widgets};
 
 /// The Combine files page.
 pub(crate) fn page(app: &mut PdfKubApp, ui: &mut egui::Ui) {

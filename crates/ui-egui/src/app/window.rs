@@ -1,4 +1,4 @@
-use super::*;
+use super::{PdfKubApp, QuickTool};
 
 impl PdfKubApp {
     /// Whether the app draws the window's title bar, buttons and resize edges: the desktop leaves

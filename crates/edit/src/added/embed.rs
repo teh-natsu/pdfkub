@@ -5,7 +5,7 @@
 
 use super::layout::{is_arabic, is_hebrew};
 use super::types::{AddedText, Align, TAG};
-use super::*;
+use super::{Content, Dict, Document, EditError, EmbedFace, ObjRef, Object, PdfString, lines, n, page_list, text_rect, win_ansi_covers};
 
 impl AddedText {
     /// The face the text is drawn with, if any: the chosen one, else Sarabun (a formal Thai face)
@@ -42,8 +42,13 @@ pub(super) struct EmbeddedText {
 
 /// [`super::layout::wrapped`] for text drawn with `face`: wrapped by the face's shaped widths,
 /// left to right.
-pub(super) fn wrapped(t: &AddedText, face: &EmbedFace, width: f64) -> Vec<(String, bool)> {
-    pdfcraft_fonts::wrap_fitting(&t.text, |s| t.face_width(face, s) <= width).into_iter().map(|l| (l, false)).collect()
+pub(super) fn wrapped(t: &AddedText, face: &EmbedFace, width: f64) -> Vec<(String, bool, usize)> {
+    let fits = |s: &str| t.face_width(face, s) <= width;
+    t.text
+        .split('\n')
+        .enumerate()
+        .flat_map(|(index, para)| pdfcraft_fonts::wrap_fitting(para, fits).into_iter().map(move |l| (l, false, index)))
+        .collect()
 }
 
 /// [`super::layout::first_undrawable`] for text drawn with `face`: a character it has no glyph for.
