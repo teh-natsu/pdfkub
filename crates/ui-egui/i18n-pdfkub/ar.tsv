@@ -1,0 +1,3 @@
+# PdfKub's own interface text in ar, added to craft-i18n's catalog at build time (crates/ui-egui/build.rs).
+	A PDF workbench — local, private, and scriptable.	منصة عمل لملفات PDF — محلية وخاصة وقابلة للبرمجة.
+	Based on PdfCraft by the ArtCraft team.	مبني على PdfCraft من فريق ArtCraft.

@@ -8,9 +8,14 @@ const JAPANESE: &str = "日本語の文字";
 const CHINESE: &str = "简体中文欢迎";
 const ARABIC: &str = "واحد اثنين";
 const TELUGU: &str = "తెలుగు ఫైల్";
-const THAI: &str = "ไฟล์ภาษาไทยที่ไม่ใช่กล่อง";
 const HEBREW: &str = "ייפוי כח.pdf";
 const DEVANAGARI: &str = "हिंदी पाठ सम्पादन";
+
+/// The embedded craft-i18n catalogs `code` reads (the shared one and PdfKub's), one text; empty
+/// in a build without them.
+fn catalog(code: &str) -> String {
+    pdfcraft_ui_egui::i18n::Lang::from_code(code).map(|l| l.catalog_texts().collect::<Vec<_>>().join("\n")).unwrap_or_default()
+}
 
 fn families() -> Vec<FontId> {
     vec![FontId::proportional(13.0), FontId::monospace(13.0), theme::medium(13.0), theme::semibold(17.0)]
@@ -140,24 +145,6 @@ fn telugu_ui_text_uses_craft_fonts() {
 
 /// On a machine with a suitable installed font, the installed definitions end every family
 /// with it and Arabic text has glyphs; the embedded-only definitions never name it.
-/// Thai text (file names, document titles, form values) renders with Anuphan, which follows the
-/// app's own font in every family, with or without craft-fonts and the system fallback.
-#[test]
-fn thai_ui_text_uses_anuphan() {
-    let defs = theme::font_definitions();
-    for family in [FontFamily::Proportional, FontFamily::Monospace] {
-        let stack = &defs.families[&family];
-        assert_eq!(stack.get(1).map(String::as_str), Some("Anuphan"), "{family:?}: {stack:?}");
-    }
-    for (family, thai) in [("medium", "Anuphan-Medium"), ("semibold", "Anuphan-SemiBold")] {
-        assert_eq!(defs.families[&FontFamily::Name(family.into())][1], thai);
-    }
-    let mut fonts = Fonts::new(TextOptions::default(), defs);
-    for id in families() {
-        assert!(fonts.has_glyphs(&id, THAI), "{id:?} lacks {THAI}");
-    }
-}
-
 #[test]
 fn system_fallback_fills_missing_scripts() {
     assert!(!theme::font_definitions().font_data.contains_key(theme::SYSTEM_FALLBACK));
@@ -348,11 +335,14 @@ fn installed_chinese_face_covers(cjk: theme::CjkPreference, catalog: &str, name:
 /// catalog's characters.
 #[test]
 fn simplified_chinese_ui_uses_an_installed_hans_face_without_an_embedded_one() {
+    if crate::support::skip_without_catalogs("simplified_chinese_ui_uses_an_installed_hans_face_without_an_embedded_one") {
+        return;
+    }
     if !pdfcraft_fonts::ui_chinese_fonts().is_empty() {
         eprintln!("skipping simplified_chinese_ui_uses_an_installed_hans_face_without_an_embedded_one: a Hans face is bundled");
         return;
     }
-    installed_chinese_face_covers(theme::CjkPreference::SimplifiedChinese, include_str!("../../src/i18n/zh-hans.tsv"), "Simplified");
+    installed_chinese_face_covers(theme::CjkPreference::SimplifiedChinese, &catalog("zh-hans"), "Simplified");
 }
 
 /// A Traditional Chinese interface keeps its installed Traditional face before the Japanese
@@ -360,7 +350,10 @@ fn simplified_chinese_ui_uses_an_installed_hans_face_without_an_embedded_one() {
 /// Traditional-only characters, and Japanese-first fallback would otherwise win.
 #[test]
 fn traditional_chinese_ui_keeps_an_installed_hant_face_before_japanese() {
-    installed_chinese_face_covers(theme::CjkPreference::TraditionalChinese, include_str!("../../src/i18n/zh-hant.tsv"), "Traditional");
+    if crate::support::skip_without_catalogs("traditional_chinese_ui_keeps_an_installed_hant_face_before_japanese") {
+        return;
+    }
+    installed_chinese_face_covers(theme::CjkPreference::TraditionalChinese, &catalog("zh-hant"), "Traditional");
 }
 
 /// Other languages keep the installed face last.
@@ -392,36 +385,38 @@ fn ui_fonts_work_without_craft_fonts() {
 /// `has_glyphs` can't answer this: with only the primary face it is also the replacement face.)
 #[test]
 fn primary_ui_fonts_cover_latin_and_cyrillic_catalogs() {
+    if crate::support::skip_without_catalogs("primary_ui_fonts_cover_latin_and_cyrillic_catalogs") {
+        return;
+    }
     use skrifa::MetadataProvider as _;
     let defs = theme::font_definitions();
-    // PdfKub: Anuphan (Thai) comes second; Inter still precedes egui's defaults.
-    assert_eq!(&defs.families[&FontFamily::Monospace][..3], ["JetBrainsMono", "Anuphan", "Inter"]);
+    assert_eq!(&defs.families[&FontFamily::Monospace][..2], ["JetBrainsMono", "Inter"]);
     let fallback = &defs.font_data["Inter"];
     let fallback_font = skrifa::FontRef::from_index(fallback.font.as_ref().as_ref(), fallback.index).unwrap();
     let fallback_charmap = fallback_font.charmap();
     for (code, catalog) in [
-        ("cs", include_str!("../../src/i18n/cs.tsv")),
-        ("el", include_str!("../../src/i18n/el.tsv")),
-        ("pt-br", include_str!("../../src/i18n/pt-br.tsv")),
-        ("de", include_str!("../../src/i18n/de.tsv")),
-        ("es", include_str!("../../src/i18n/es.tsv")),
-        ("fr", include_str!("../../src/i18n/fr.tsv")),
-        ("ru", include_str!("../../src/i18n/ru.tsv")),
-        ("kk", include_str!("../../src/i18n/kk.tsv")),
-        ("bg", include_str!("../../src/i18n/bg.tsv")),
-        ("hu", include_str!("../../src/i18n/hu.tsv")),
-        ("uk", include_str!("../../src/i18n/uk.tsv")),
-        ("it", include_str!("../../src/i18n/it.tsv")),
-        ("tr", include_str!("../../src/i18n/tr.tsv")),
-        ("sl", include_str!("../../src/i18n/sl.tsv")),
-        ("lt", include_str!("../../src/i18n/lt.tsv")),
-        ("id", include_str!("../../src/i18n/id.tsv")),
-        ("vi", include_str!("../../src/i18n/vi.tsv")),
-        ("fi", include_str!("../../src/i18n/fi.tsv")),
-        ("sq", include_str!("../../src/i18n/sq.tsv")),
-        ("ca", include_str!("../../src/i18n/ca.tsv")),
-        ("ro", include_str!("../../src/i18n/ro.tsv")),
-        ("nb", include_str!("../../src/i18n/nb.tsv")),
+        ("cs", &catalog("cs")),
+        ("el", &catalog("el")),
+        ("pt-br", &catalog("pt-br")),
+        ("de", &catalog("de")),
+        ("es", &catalog("es")),
+        ("fr", &catalog("fr")),
+        ("ru", &catalog("ru")),
+        ("kk", &catalog("kk")),
+        ("bg", &catalog("bg")),
+        ("hu", &catalog("hu")),
+        ("uk", &catalog("uk")),
+        ("it", &catalog("it")),
+        ("tr", &catalog("tr")),
+        ("sl", &catalog("sl")),
+        ("lt", &catalog("lt")),
+        ("id", &catalog("id")),
+        ("vi", &catalog("vi")),
+        ("fi", &catalog("fi")),
+        ("sq", &catalog("sq")),
+        ("ca", &catalog("ca")),
+        ("ro", &catalog("ro")),
+        ("nb", &catalog("nb")),
     ] {
         // Vietnamese stacks its diacritics: the precomposed letters and the base letters they
         // combine with, including `đ` and the tone marks `ạ ả ấ ầ ẩ ẫ ậ ắ ằ ẳ ẵ ặ ế ề ể ễ ệ`.

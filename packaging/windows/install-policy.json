@@ -1,7 +1,7 @@
 {
   "id": "pdfkub",
   "name": "PdfKub",
-  "upgradeCode": "EA00C367-7270-4C50-9D8B-A7A5C88AD27F",
+  "upgradeCode": "ED6C9569-1570-4C49-8150-04D46F4D986F",
   "sources": [
     "pdfkub.wxs",
     "installer-ui.wxs"

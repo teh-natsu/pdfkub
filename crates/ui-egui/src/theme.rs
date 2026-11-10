@@ -220,9 +220,6 @@ pub fn install_fonts_for(ctx: &egui::Context, cjk: CjkPreference) {
 pub const SYSTEM_FALLBACK: &str = "system-fallback";
 /// The name of the installed Devanagari (Hindi) face [`installed_font_definitions`] may add.
 pub const SYSTEM_DEVANAGARI_FALLBACK: &str = "system-devanagari-fallback";
-/// The installed Chinese face PdfKub adds outside a Chinese interface (see
-/// [`installed_font_definitions`]).
-pub const SYSTEM_FALLBACK_CJK: &str = "system-fallback-cjk";
 /// The name of the installed Telugu face [`installed_font_definitions`] may add.
 pub const SYSTEM_TELUGU_FALLBACK: &str = "system-telugu-fallback";
 /// The name of the installed Sinhala face [`installed_font_definitions`] may add.
@@ -293,19 +290,6 @@ pub fn installed_font_definitions(cjk: CjkPreference) -> FontDefinitions {
             }
         }
         let need = installed_fallback_need(cjk, !pdfcraft_fonts::ui_chinese_fonts().is_empty());
-        // PdfKub: outside a Chinese interface a build without craft-fonts still needs a CJK face
-        // for the language list's 简体中文, 繁體中文 and 日本語 and for CJK file names: the
-        // installed Chinese one (Microsoft YaHei on Windows also has kana), before the general
-        // fallback, which stays last.
-        if need == Need::Other
-            && pdfcraft_fonts::ui_japanese_fonts().is_empty()
-            && let Some(data) = fallback(Need::Hans)
-        {
-            fonts.font_data.insert(SYSTEM_FALLBACK_CJK.to_owned(), data);
-            for stack in fonts.families.values_mut() {
-                stack.push(SYSTEM_FALLBACK_CJK.to_owned());
-            }
-        }
         if let Some(data) = fallback(need) {
             fonts.font_data.insert(SYSTEM_FALLBACK.to_owned(), data);
             let japanese: Vec<String> = pdfcraft_fonts::ui_japanese_fonts().iter().map(|f| f.name()).collect();
@@ -321,10 +305,10 @@ pub fn installed_font_definitions(cjk: CjkPreference) -> FontDefinitions {
     fonts
 }
 
-/// The interface fonts: Inter (and JetBrains Mono for code) first, then Anuphan for Thai, then
-/// egui's defaults, then the CJK, Arabic, Telugu, Hebrew and Thai faces of the optional
-/// craft-fonts build input as the last fallback in every family. Without craft-fonts there is no
-/// Japanese, Chinese, Arabic, Telugu or Hebrew face here.
+/// The interface fonts: Inter (and JetBrains Mono for code) first, then egui's defaults, then
+/// the CJK, Arabic, Telugu, Hebrew and Thai faces of the optional craft-fonts build input as the
+/// last fallback in every family. Without craft-fonts there is no Japanese, Chinese, Arabic,
+/// Telugu, Hebrew or Thai face here.
 pub fn font_definitions() -> FontDefinitions {
     font_definitions_for(false)
 }
@@ -382,17 +366,11 @@ fn font_definitions_for_platform(prefer_hans: bool, platform: FontPolicyPlatform
     add(&mut fonts, "Inter-Medium", include_bytes!("../../../assets/fonts/Inter-Medium.ttf"));
     add(&mut fonts, "Inter-SemiBold", include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf"));
     add(&mut fonts, "JetBrainsMono", include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf"));
-    // Thai: Inter and egui's defaults have no Thai letters, so Anuphan follows Inter in every
-    // family, at the same three weights. The bytes are the ones pdfcraft-fonts embeds in PDFs.
-    add(&mut fonts, "Anuphan", pdfcraft_fonts::ANUPHAN_REGULAR);
-    add(&mut fonts, "Anuphan-Medium", pdfcraft_fonts::ANUPHAN_MEDIUM);
-    add(&mut fonts, "Anuphan-SemiBold", pdfcraft_fonts::ANUPHAN_SEMIBOLD);
-    fonts.families.entry(FontFamily::Proportional).or_default().splice(0..0, ["Inter".to_owned(), "Anuphan".to_owned()]);
-    fonts.families.entry(FontFamily::Monospace).or_default().splice(0..0, ["JetBrainsMono".to_owned(), "Anuphan".to_owned()]);
+    fonts.families.entry(FontFamily::Proportional).or_default().insert(0, "Inter".to_owned());
+    fonts.families.entry(FontFamily::Monospace).or_default().insert(0, "JetBrainsMono".to_owned());
     // Keep missing Latin/Cyrillic letters in the app's own faces (for example Bulgarian ѝ,
     // absent from JetBrains Mono), before egui's defaults or optional system/CJK fallbacks.
-    // PdfKub: after Anuphan, which stays second so Thai draws in it.
-    fonts.families.entry(FontFamily::Monospace).or_default().insert(2, "Inter".to_owned());
+    fonts.families.entry(FontFamily::Monospace).or_default().insert(1, "Inter".to_owned());
     // The same static bytes pdfcraft-fonts uses for Japanese/Chinese text in PDFs: one copy, not two.
     for face in pdfcraft_fonts::ui_cjk_fonts(prefer_hans) {
         let name = face.name();
@@ -425,18 +403,9 @@ fn font_definitions_for_platform(prefer_hans: bool, platform: FontPolicyPlatform
             }
         }
     }
-    // Sarabun, the face Thai added text and typed comments are embedded with, for previews while
-    // typing them.
-    add(&mut fonts, "Sarabun", pdfcraft_fonts::SARABUN_REGULAR);
-    add(&mut fonts, "Sarabun-Bold", pdfcraft_fonts::SARABUN_BOLD);
     let fallback: Vec<String> = fonts.families[&FontFamily::Proportional].clone();
-    for (fam, primary) in [("sarabun", "Sarabun"), ("sarabun-bold", "Sarabun-Bold")] {
+    for (fam, primary) in [("medium", "Inter-Medium"), ("semibold", "Inter-SemiBold")] {
         let mut stack = vec![primary.to_owned()];
-        stack.extend(fallback.iter().cloned());
-        fonts.families.insert(FontFamily::Name(fam.into()), stack);
-    }
-    for (fam, primary, thai) in [("medium", "Inter-Medium", "Anuphan-Medium"), ("semibold", "Inter-SemiBold", "Anuphan-SemiBold")] {
-        let mut stack = vec![primary.to_owned(), thai.to_owned()];
         stack.extend(fallback.iter().cloned());
         fonts.families.insert(FontFamily::Name(fam.into()), stack);
     }
@@ -451,10 +420,6 @@ pub fn medium(size: f32) -> FontId {
 }
 pub fn semibold(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name("semibold".into()))
-}
-/// Sarabun, for previewing text that will be embedded in Sarabun.
-pub fn sarabun(size: f32, bold: bool) -> FontId {
-    FontId::new(size, FontFamily::Name(if bold { "sarabun-bold" } else { "sarabun" }.into()))
 }
 
 /// Install the palette, widget styling, text sizes and right-to-left flag for the chosen theme.

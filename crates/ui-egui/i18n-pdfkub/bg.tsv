@@ -1,0 +1,3 @@
+# PdfKub's own interface text in bg, added to craft-i18n's catalog at build time (crates/ui-egui/build.rs).
+	A PDF workbench — local, private, and scriptable.	Работна среда за PDF — локална, поверителна и с поддръжка на скриптове.
+	Based on PdfCraft by the ArtCraft team.	Базирано на PdfCraft от екипа на ArtCraft.

@@ -1,0 +1,3 @@
+# PdfKub's own interface text in hu, added to craft-i18n's catalog at build time (crates/ui-egui/build.rs).
+	A PDF workbench — local, private, and scriptable.	PDF-munkaasztal – helyi, privát és szkriptelhető.
+	Based on PdfCraft by the ArtCraft team.	A PdfCraft alapján, az ArtCraft csapatától.

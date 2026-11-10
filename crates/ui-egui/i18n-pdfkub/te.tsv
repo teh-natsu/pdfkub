@@ -1,0 +1,2 @@
+# PdfKub's own interface text in te, added to craft-i18n's catalog at build time (crates/ui-egui/build.rs).
+	A PDF workbench — local, private, and scriptable.	PDF వర్క్‌బెంచ్ — మీ కంప్యూటర్‌లోనే నడుస్తుంది, గోప్యంగా ఉంటుంది, స్క్రిప్ట్‌లతో ఆటోమేట్ చేయవచ్చు.

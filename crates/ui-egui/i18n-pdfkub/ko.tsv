@@ -1,0 +1,3 @@
+# PdfKub's own interface text in ko, added to craft-i18n's catalog at build time (crates/ui-egui/build.rs).
+	A PDF workbench — local, private, and scriptable.	PDF 작업대 — 로컬, 비공개, 스크립트 지원.
+	Based on PdfCraft by the ArtCraft team.	ArtCraft 팀의 PdfCraft를 기반으로 합니다.

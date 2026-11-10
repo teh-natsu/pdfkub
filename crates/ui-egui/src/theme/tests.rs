@@ -4,6 +4,9 @@ use super::*;
 /// back. This is the `Style::right_to_left` half of the explicit RTL policy.
 #[test]
 fn arabic_chrome_is_right_to_left_after_the_language_changes() {
+    if !crate::i18n::needs_catalogs() {
+        return;
+    }
     let previous = crate::i18n::current();
     let ctx = egui::Context::default();
     crate::i18n::set_current(crate::i18n::Lang::from_code("ar").expect("registered language"));
@@ -297,36 +300,4 @@ fn text_is_readable_on_every_surface() {
             }
         }
     }
-}
-
-/// PdfKub: in an English (or Thai) interface without craft-fonts, the language list's Chinese
-/// and Japanese names still draw (no boxes), from the installed Chinese face.
-#[test]
-#[cfg(not(target_arch = "wasm32"))]
-fn chinese_and_japanese_language_names_have_glyphs() {
-    if crate::system_fonts::fallback(crate::system_fonts::Need::Hans).is_none() || !pdfcraft_fonts::ui_japanese_fonts().is_empty() {
-        eprintln!("skipped: no installed Chinese face, or craft-fonts draws these");
-        return;
-    }
-    let ctx = egui::Context::default();
-    ctx.set_fonts(installed_font_definitions(CjkPreference::Default));
-    ctx.run_ui(Default::default(), |_| {}).textures_delta.clear();
-    for name in ["简体中文", "繁體中文", "日本語"] {
-        assert!(ctx.fonts_mut(|f| f.has_glyphs(&regular(13.0), name)), "{name}");
-    }
-}
-
-/// PdfKub: the language list's Telugu name draws in a build without craft-fonts, from the
-/// installed Telugu face (skipped where the machine has none).
-#[test]
-#[cfg(not(target_arch = "wasm32"))]
-fn the_telugu_language_name_has_glyphs() {
-    if crate::system_fonts::telugu_fallback().is_none() {
-        eprintln!("skipped: no Telugu face installed");
-        return;
-    }
-    let ctx = egui::Context::default();
-    ctx.set_fonts(installed_font_definitions(CjkPreference::Default));
-    ctx.run_ui(Default::default(), |_| {}).textures_delta.clear();
-    assert!(ctx.fonts_mut(|f| f.has_glyphs(&regular(13.0), "\u{0C24}\u{0C46}\u{0C32}\u{0C41}\u{0C17}\u{0C41}")), "Telugu");
 }

@@ -110,14 +110,14 @@ Copy-Item (Join-Path $Root 'assets\app-icon\LICENSE-document.txt') $Stage
 
 & (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'pdfkub.exe') (Join-Path $Stage 'pdfkub-cli.exe')
 
-# OCR models (#103), English and Thai: the app looks in models\ beside pdfkub.exe. `cargo xtask models` fetches every
+# OCR models (#103): the app looks in models\ beside pdfkub.exe. `cargo xtask models` fetches every
 # ATTRIBUTION.toml `kind = "model"` file (verified by SHA-256) with its licence and ATTRIBUTION.txt;
 # the MSI and the portable zip take the whole folder, so new models ship without naming them here.
 $Models = Join-Path $Stage 'models'
 New-Item -ItemType Directory -Force -Path $Models | Out-Null
 Push-Location $Root
 if ($env:PDFKUB_MODELS) {
-  # A folder already filled by `cargo xtask models DIR` (offline builds).
+  # PdfKub: a folder already filled by `cargo xtask models DIR` (offline builds).
   Copy-Item (Join-Path $env:PDFKUB_MODELS '*') $Models -Recurse
   Pop-Location
 } else {
@@ -160,8 +160,8 @@ Invoke-Native 'test-msi' {
   & (Get-Process -Id $PID).Path -NoProfile -File (Join-Path $PSScriptRoot 'test-msi.ps1') $Msi `
     -CraftFontLicences $HasCraftFontLicences -ExpectedFontNoticesDirectory $Docs
 }
-# PdfKub: installs for all users in Program Files\PdfKub, not in upstream's per-user ArtCraft
-# suite folder, so upstream's check-install-policy.ps1 does not apply.
+# Check the compiled scope, path and registration contract before signing.
+& (Join-Path $PSScriptRoot 'check-install-policy.ps1') -MsiPath $Msi
 # wix writes its debug symbols (.wixpdb) next to the MSI; keep them out of the release assets.
 Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Msi, '.wixpdb'))
 & (Join-Path $PSScriptRoot 'sign.ps1') $Msi

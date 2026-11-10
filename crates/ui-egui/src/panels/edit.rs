@@ -393,16 +393,10 @@ fn added_text_format(
     style: &mut pdfcraft_engine::AddedText,
     paragraphs: Option<crate::format_text_ui::Paragraphs>,
 ) -> crate::format_text_ui::Outcome {
-    // PdfKub: or an embedded face (`font_list`), which follows Bold and Italic.
-    let shown = crate::font_list::font_label(style);
-    let (bold, italic) = (style.bold, style.italic);
+    let shown = style.family.label().to_string();
     let out = crate::format_text_ui::panel(ui, t, style, None, crate::format_text_ui::Fonts { sources: None, shown, mixed_size: false }, paragraphs);
     if let Some(crate::format_text_ui::FontChoice::Family(family)) = out.font {
         style.family = family;
-        style.font = None;
-    }
-    if (style.bold, style.italic) != (bold, italic) {
-        crate::font_list::restyle(style);
     }
     out
 }
@@ -412,7 +406,11 @@ impl PdfKubApp {
     /// style at once and stays open. Text already on the page is updated with what has been typed,
     /// as one undoable change; new text waits until it is finished. Text typed after this styling
     /// starts from it too.
-    pub(crate) fn restyle_draft(&mut self, index: usize, style: pdfcraft_engine::AddedText) {
+    pub(crate) fn restyle_draft(&mut self, index: usize, mut style: pdfcraft_engine::AddedText) {
+        // A gray or CMYK ink the colour no longer shows goes now (#6440): kept, the draft would
+        // differ from the item the page reads back without it, and a later pick of the ink's
+        // look would bring it back.
+        style.drop_stale_ink();
         let Some(view) = self.views.get_mut(index) else { return };
         // Text the standard fonts can't draw stays in the box, unwritten, until it is corrected (#125).
         let blocked = view.content.blocked().is_some();

@@ -46,6 +46,8 @@ PROTECTED = [
     "PdfCraft by the ArtCraft team",
     # The marker on upstream's patches in vendor/ (never renamed), which tests look for.
     "PdfCraft patch",
+    # craft-i18n names PdfCraft's catalogs so (locales/<code>/pdfcraft.tsv); PdfKub reads them.
+    "pdfcraft.tsv",
     "pdfcraft*",
     "`pdfcraft-`",
     '"pdfcraft-"',

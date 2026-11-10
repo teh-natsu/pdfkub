@@ -166,13 +166,9 @@ pub(crate) fn panel(
                     ui.separator();
                 }
                 for f in [FontFamily::Helvetica, FontFamily::Times, FontFamily::Courier] {
-                    if ui.selectable_label(fonts.sources.is_none() && look.family == f && look.font.is_none(), f.label()).clicked() {
+                    if ui.selectable_label(fonts.sources.is_none() && look.family == f, f.label()).clicked() {
                         out.font = Some(FontChoice::Family(f));
                     }
-                }
-                // PdfKub: added text can also be drawn in an embedded face (Thai in Sarabun, …).
-                if fonts.sources.is_none() {
-                    crate::font_list::menu_entries(ui, t, look);
                 }
                 if fonts.sources.is_some() {
                     ui.separator();
@@ -260,15 +256,7 @@ pub(crate) fn panel(
             .response
     });
     font_resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::ComboBox, ui.is_enabled(), tl!("Font")));
-    font_resp.on_hover_text(format!(
-        "{}\n{}",
-        tl!("Font"),
-        if fonts.sources.is_none() {
-            tl!("Thai and other scripts are drawn with an embedded font: the one you pick, or Sarabun.")
-        } else {
-            tl!("Thai and Arabic use regular fallback fonts when available.")
-        }
-    ));
+    font_resp.on_hover_text(format!("{}\n{}", tl!("Font"), tl!("Thai and Arabic use regular fallback fonts when available.")));
     ui.add_space(4.0);
 
     // Size and colour | bullets, numbering and alignment.
@@ -278,7 +266,8 @@ pub(crate) fn panel(
         let swatch = colour_button(ui, t, look.color);
         egui::Popup::menu(&swatch).close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside).show(|ui| {
             if let Some(picked) = crate::comments::swatch_grid(ui, Some(look.color)) {
-                look.color = picked;
+                // Drops a gray or CMYK ink the new colour isn't the look of (#6440).
+                look.set_color(picked);
                 ui.close();
             }
         });

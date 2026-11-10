@@ -5,6 +5,7 @@ impl PdfKubApp {
     pub(super) fn show_progress(&mut self, ctx: &egui::Context) {
         if widgets::progress_notice(self, ctx) {
             self.cancel_optimize();
+            self.cancel_scan_clean();
         }
     }
 
@@ -96,45 +97,39 @@ impl PdfKubApp {
         self.finish_document_copy(ctx);
         // The Combine grid's thumbnails, whichever tab shows (renders under way still finish).
         self.combine_thumbs_frame(ctx);
-        // The tabs in view: the active one, and the comparison's old file side by side with it,
-        // or with PdfKub's split view the one the other side shows.
-        let partner = self.active.and_then(|i| compare_ui::side_by_side(self, i)).map(|(old, _)| old);
-        let mut shown: Vec<usize> = self.active.into_iter().chain(partner).collect();
-        if partner.is_none() && !self.full_screen && self.is_split() {
-            for pane in [crate::split::Pane::Left, crate::split::Pane::Right] {
-                if let Some(i) = self.shown_in(pane).filter(|i| !shown.contains(i)) {
-                    shown.push(i);
-                }
-            }
-        }
         // Retire hidden documents before admitting the visible documents' textures, so the
         // three cache limits apply to the application, regardless of how many tabs are open.
-        for i in 0..self.views.len() {
+        // On screen: the active tab, the comparison's old file side by side with it, and what
+        // split view's other pane shows.
+        let shown = self.views_on_screen();
+        let shown_docs: std::collections::HashSet<DocId> = shown.iter().filter_map(|&i| self.views.get(i)).map(|v| v.id).collect();
+        for (i, view) in self.views.iter_mut().enumerate() {
             if shown.contains(&i) {
                 continue;
             }
-            let id = self.views[i].id;
-            let Some(doc) = self.session.get(id) else { continue };
-            if shown.iter().any(|&s| self.views[s].id == id) {
-                self.views[i].suspend_textures();
-            } else {
-                self.views[i].suspend_rendering(&doc.renderer);
+            if shown_docs.contains(&view.id) {
+                // Another tab of this document is on screen, and renders through its pool.
+                view.release_rasters();
+            } else if let Some(doc) = self.session.get(view.id) {
+                view.suspend_rendering(&doc.renderer);
             }
         }
-        let mut done: Vec<DocId> = Vec::new();
+        // Each document on screen once: two views of it (split view) share its render pool.
+        let mut done = std::collections::HashSet::new();
         for &i in &shown {
-            let id = self.views[i].id;
-            if done.contains(&id) {
+            let Some(id) = self.views.get(i).map(|v| v.id) else { continue };
+            if !done.insert(id) {
                 continue;
             }
-            done.push(id);
             let Some(doc) = self.session.get(id) else { continue };
-            let mut views: Vec<&mut canvas::DocView> =
-                self.views.iter_mut().enumerate().filter(|(j, v)| shown.contains(j) && v.id == id).map(|(_, v)| v).collect();
-            if let [view] = views.as_mut_slice() {
-                view.finish_render_frame(ctx, &doc.info, &doc.renderer);
-            } else {
-                canvas::DocView::finish_shared_render_frame(&mut views, ctx, &doc.info, &doc.renderer);
+            let group: Vec<usize> = shown.iter().copied().filter(|&k| self.views.get(k).is_some_and(|v| v.id == id)).collect();
+            match group.as_slice() {
+                [only] => {
+                    if let Some(view) = self.views.get_mut(*only) {
+                        view.finish_render_frame(ctx, &doc.info, &doc.renderer);
+                    }
+                }
+                _ => DocView::finish_shared_render_frame(ctx, &doc.info, &doc.renderer, &mut self.views, &group),
             }
         }
     }
