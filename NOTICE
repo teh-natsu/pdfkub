@@ -10,15 +10,12 @@ it contains none of the ArtCraft name, wordmark or logos.
 
 Third-party material
 
+- edit-session 0.1.0-alpha.2, Copyright (c) 2026 PerchAnton. See vendor/edit-session/LICENSE-MIT and vendor/edit-session/LICENSE-APACHE.
+
 This product bundles third-party material under its own licenses, listed below. The per-file
 list (author, source, license) is in ATTRIBUTION.md.
 
 - Lucide icons (assets/icons/*.svg) — ISC and MIT licences (Feather-derived icons). See assets/icons/LICENSE-lucide.txt.
-- Lucide icons (assets/icons/*.svg) — ISC License. See assets/icons/LICENSE-lucide.txt.
-- Anuphan typeface (assets/fonts/Anuphan-*.ttf), Copyright 2019 The Anuphan Project Authors, static instances
-  of the variable font — SIL Open Font License 1.1. See assets/fonts/OFL-Anuphan.txt.
-- Sarabun typeface (assets/fonts/Sarabun-*.ttf), Copyright 2018 The Sarabun Project Authors — SIL Open Font
-  License 1.1. Embedded in PDFs for added Thai text. See assets/fonts/OFL-Sarabun.txt.
 - Sriracha typeface (assets/fonts/Sriracha-Regular.ttf), Copyright 2015 Cadson Demak, 2014 Pablo Impallari — SIL Open Font
   License 1.1. Typed Thai signatures. See assets/fonts/OFL-Sriracha.txt.
   The Windows PDF file icon (assets/app-icon/pdfcraft-document.svg and .ico) adapts Lucide's

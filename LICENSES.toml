@@ -16,7 +16,19 @@ sha256 = "f524a2539f241eda6fcff4396b02f175059e81f561e36ba874e07237471ba9e6"
 [[document]]
 source = "NOTICE"
 destination = "NOTICE"
-sha256 = "a71a885da1a10017a702520ee8c9e06dac886f178d9dde5cb030abeb5d74440b"
+sha256 = "ae2c29d82f2d85f76109960960352f276d870fa6c358a82ffe9163229abbd12a"
+
+[[document]]
+source = "vendor/edit-session/LICENSE-MIT"
+licences = ["MIT"]
+destination = "vendor/edit-session/LICENSE-MIT"
+sha256 = "665a942f9317a358930b470ad522a22a58ff6c346db0395463ec84dd3e19d775"
+
+[[document]]
+source = "vendor/edit-session/LICENSE-APACHE"
+licences = ["Apache-2.0"]
+destination = "vendor/edit-session/LICENSE-APACHE"
+sha256 = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
 
 [[document]]
 source = "assets/app-icon/LICENSE-document.txt"
@@ -27,16 +39,6 @@ sha256 = "cb8716c05387959a2420c406422c8c1d04a6d9de7b0877bbcc383fa305c97ab8"
 source = "assets/app-icon/LICENSE.txt"
 destination = "assets/app-icon/LICENSE.txt"
 sha256 = "36274015073c591b05a880d232ad5024c202075cd333389e749a7ea7c5c542d3"
-
-[[document]]
-source = "assets/fonts/OFL-Anuphan.txt"
-destination = "assets/fonts/OFL-Anuphan.txt"
-sha256 = "cbc57ac0dddda1b70f246a16358fc3c2a32628a23a6d10ef64f746141d3fb159"
-
-[[document]]
-source = "assets/fonts/OFL-Sarabun.txt"
-destination = "assets/fonts/OFL-Sarabun.txt"
-sha256 = "b26cae1321380296ba8311b632a397d5eac11b47197f9d0aa0b9310f1531ad60"
 
 [[document]]
 source = "assets/fonts/OFL-Sriracha.txt"
@@ -187,3 +189,9 @@ crate = "icu_segmenter_data"
 path = "data/segmenter_dictionary_extended_v1.rs.data"
 licence = "Unicode-3.0"
 documents = ["licenses/ICU4X-LICENSE.txt"]
+
+[[bundled]]
+crate = "craft-prc"
+path = "src/acof/table.rs"
+licence = "MIT"
+documents = ["licenses/prc-rs-LICENSE.txt"]
