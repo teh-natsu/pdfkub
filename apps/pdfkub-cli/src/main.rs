@@ -92,8 +92,8 @@ pdfkub-cli run    --script steps.json [--root DIR] [--report]
 ",
     mcp_usage!(),
     "\
-pdfkub-cli ui     --control FILE <method> [key=value …] [--out shot.png]
-                                                           drive a running app started with --control FILE"
+pdfkub-cli ui     --control PORT (--control-token-file FILE | --control-token TOKEN) <method> [key=value …] [--out shot.png]
+                                                           drive a running app started with --control PORT"
 );
 
 fn main() -> ExitCode {

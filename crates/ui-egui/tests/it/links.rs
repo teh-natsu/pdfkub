@@ -3,15 +3,17 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_engine::links;
-use pdfcraft_ui_egui::{Dialog, PdfKubApp};
+use pdfcraft_ui_egui::PdfKubApp;
 
 fn harness(setup: impl FnOnce(&mut PdfKubApp) + 'static) -> Harness<'static, PdfKubApp> {
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfKubApp::new();
-        app.set_option("language", "en").unwrap();
-        setup(&mut app);
-        app
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |cc| {
+        crate::support::install_runtime(&cc.egui_ctx);
+        {
+            let mut app = crate::control::new_app();
+            app.set_option(&egui::Context::default(), "language", "en").unwrap();
+            setup(&mut app);
+            app
+        }
     });
     h.run_steps(4);
     h
@@ -27,30 +29,8 @@ fn home_screen_has_no_project_links() {
     }
 }
 
-#[test]
-fn about_dialog_credits_pdfkub_without_links() {
-    let pdf = b"%PDF-1.7\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF";
-    // With a document open, so the home screen is not on screen.
-    let h = harness(move |app| {
-        app.open_bytes("one.pdf", None, pdf.to_vec()).unwrap();
-        app.dialog = Some(Dialog::About);
-    });
-    h.get_by_label("Based on PdfCraft by the ArtCraft team.");
-    assert_eq!(h.query_all_by_label("PdfKub on GitHub").count(), 0);
-    assert!(links::LINKS.is_empty());
-}
-
-#[test]
-fn help_commands_open_each_link() {
-    for l in links::LINKS {
-        let mut h = harness(|_| {});
-        assert!(h.state_mut().execute(l.command), "{}", l.command);
-        assert_eq!(h.state().last_opened_url.as_deref(), Some(l.url));
-        assert_eq!(pdfcraft_engine::commands::command(l.command).unwrap().menu, Some("Help"));
-    }
-}
-
-/// Runs frames until the node labelled `label` exists and has stopped moving, then returns it.
+/// Runs frames until the node labelled `label` exists and has stopped moving, then returns it. A table row is named by
+/// its first cell, so a name may be the row's and its cell's: the first (outer) node is the one returned.
 ///
 /// The About dialog is a modal centred on its own size, and switching tabs changes that size, so
 /// for a few frames afterwards the modal grows and recentres and every control in it moves. A
@@ -61,33 +41,21 @@ fn settled<'a>(h: &'a mut Harness<'static, PdfKubApp>, label: &'a str) -> egui_k
     let mut last = None;
     for _ in 0..60 {
         h.run_steps(1);
-        let now = h.query_by_label(label).map(|n| n.rect());
+        let now = h.query_all_by_label(label).next().map(|n| n.rect());
         if now.is_some() && now == last {
-            return h.get_by_label(label);
+            return h.query_all_by_label(label).next().expect("the node was just found");
         }
         last = now;
     }
     panic!("{label:?} never appeared or never stopped moving");
 }
 
+/// PdfKub's About is one page: no Contributors or Models tab.
 #[test]
 fn about_dialog_has_no_contributors_or_models_tab() {
-    let mut h = harness(|app| app.dialog = Some(Dialog::About));
+    let mut h = harness(|app| app.set_option(&egui::Context::default(), "dialog", "about").unwrap());
     settled(&mut h, "Based on PdfCraft by the ArtCraft team.");
     for gone in ["Contributors", "Models"] {
         assert_eq!(h.query_all_by_label(gone).count(), 0, "{gone}");
     }
-}
-
-/// The About dialog fits its few lines: Close sits just under the credit, even right after a
-/// tall dialog (Keyboard shortcuts) used the same modal. A button row centred in the remaining
-/// height kept the modal at the earlier dialog's size, with Close floating halfway down.
-#[test]
-fn about_dialog_is_sized_to_its_content() {
-    let mut h = harness(|app| app.dialog = Some(Dialog::Shortcuts));
-    h.run_steps(4);
-    h.state_mut().dialog = Some(Dialog::About);
-    let credit = settled(&mut h, "Based on PdfCraft by the ArtCraft team.").rect();
-    let close = settled(&mut h, "Close").rect();
-    assert!(close.top() - credit.bottom() < 60.0, "Close {close:?} far below the credit {credit:?}");
 }

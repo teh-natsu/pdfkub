@@ -13,7 +13,7 @@ pub struct Link {
     pub command: &'static str,
     pub label: &'static str,
     pub url: &'static str,
-    /// Lucide icon name.
+    /// Icon name: a name of the UI catalogue, or one of the app's own set.
     pub icon: &'static str,
 }
 

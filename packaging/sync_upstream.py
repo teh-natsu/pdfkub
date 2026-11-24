@@ -48,6 +48,8 @@ PROTECTED = [
     "PdfCraft patch",
     # craft-i18n names PdfCraft's catalogs so (locales/<code>/pdfcraft.tsv); PdfKub reads them.
     "pdfcraft.tsv",
+    # The name craft-cms writes into its built-in sRGB profile, which a test compares byte for byte.
+    "sRGB (PdfCraft)",
     "pdfcraft*",
     "`pdfcraft-`",
     '"pdfcraft-"',
