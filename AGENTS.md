@@ -89,7 +89,7 @@ For the crates you changed: `cargo fmt --check`, `cargo clippy -p <crate> -- -D 
 
 ## PdfKub
 
-PdfKub is Nattapol Chaisri's fork of PdfKub (see NOTICE); these notes override the rules above where they differ.
+PdfKub is Nattapol Chaisri's fork, based on PdfCraft (see NOTICE); these notes override the rules above where they differ.
 
 - Upstream merges: `packaging/merge_upstream.py` and `packaging/sync_upstream.py` (renames PdfCraft to PdfKub, refreshes ATTRIBUTION, lists ArtCraft branding).
 - No ArtCraft branding or links: no logos, Discord, community card or project links. About is PdfKub's own one-page dialog, with no Contributors or Models tab; it credits upstream in plain text.
